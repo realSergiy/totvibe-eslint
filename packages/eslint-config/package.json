@@ -1,6 +1,6 @@
 {
   "name": "@zyplux/eslint-config",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Shared ESLint flat config and custom rules",
   "keywords": [
     "eslint",
@@ -19,34 +19,43 @@
   },
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./contracts": {
-      "types": "./src/contracts.ts",
-      "default": "./src/contracts.ts"
-    },
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts",
     "./package.json": "./package.json"
   },
   "imports": {
-    "#scripts/print-config": "./scripts/print-config.ts",
     "#contracts": "./src/contracts.ts",
     "#create-rule": "./src/create-rule.ts",
-    "#plugin": "./src/plugin.ts",
     "#package.json": "./package.json",
-    "#configs/base": "./src/configs/base.ts",
-    "#configs/typescript": "./src/configs/typescript.ts"
+    "#plugin": "./src/plugin.ts"
   },
   "files": [
     "README.md",
-    "src"
+    "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "imports": {
+      "#contracts": "./dist/src/contracts.js",
+      "#create-rule": "./dist/src/create-rule.js",
+      "#package.json": "./package.json",
+      "#plugin": "./dist/src/plugin.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      },
+      "./contracts": {
+        "types": "./dist/src/contracts.d.ts",
+        "default": "./dist/src/contracts.js"
+      },
+      "./package.json": "./package.json"
+    }
   },
   "scripts": {
-    "dump-rules": "bun run scripts/dump-rules.ts"
+    "dump-rules": "node scripts/dump-rules.ts",
+    "prepack": "tsc -b tsconfig.json"
   },
   "dependencies": {
     "@eslint/js": "catalog:",
@@ -59,14 +68,15 @@
     "eslint-plugin-react": "catalog:",
     "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "yaml": "catalog:"
   },
   "peerDependencies": {
     "eslint": "catalog:",
     "typescript": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*",
     "@zyplux/util": "workspace:*",
     "typescript": "catalog:",

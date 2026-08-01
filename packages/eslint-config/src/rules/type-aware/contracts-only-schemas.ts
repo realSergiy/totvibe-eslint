@@ -4,7 +4,7 @@ import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils';
 
 import { createRule } from '#create-rule';
 
-import { hasZodBrand } from './zod-brand';
+import { hasZodBrand } from './zod-brand.ts';
 
 type MessageId = 'nonSchemaExport';
 

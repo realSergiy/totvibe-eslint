@@ -15,7 +15,10 @@ type RunFixtureRolesTests = Callable[[dict[str, str]], CheckResult]
 
 CHECK_ID = "fixture_roles_ts"
 
-_ROLES_ROOT_WS = '{"workspaces": ["apps/*", "packages/*", "tests/*"]}'
+_ROLES_ROOT_WS = {
+    "package.json": "{}",
+    "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - packages/*\n  - tests/*\n",
+}
 _ROLES_SUBJECT = '{"name": "@demo/app", "exports": {".": "./src/index.ts"}}'
 _ROLES_SUITE = '{"name": "@demo/tests-app", "private": true, "imports": {"#fixtures": "./fixtures/index.ts"}}'
 _ROLES_SUITE_FLAT_ALIAS = '{"name": "@demo/tests-app", "private": true, "imports": {"#fixtures": "./fixtures.ts"}}'
@@ -30,7 +33,7 @@ _ROLES_OK = "every suite's #fixtures alias targets fixtures/index.ts with fixtur
 
 def _suite_files(arrange: str = _ROLES_ARRANGE_PLAIN, suite_manifest: str = _ROLES_SUITE) -> dict[str, str]:
     return {
-        "package.json": _ROLES_ROOT_WS,
+        **_ROLES_ROOT_WS,
         "apps/app/package.json": _ROLES_SUBJECT,
         "apps/app/src/index.ts": "",
         "tests/app/package.json": suite_manifest,
@@ -57,7 +60,7 @@ def test_31_1_2_skips_workspaces_with_no_torn_out_story_suite(
     run_fixture_roles_tests: RunFixtureRolesTests, skip: MakeFinding
 ) -> None:
     result = run_fixture_roles_tests({
-        "package.json": _ROLES_ROOT_WS,
+        **_ROLES_ROOT_WS,
         "apps/app/package.json": _ROLES_SUBJECT,
         "apps/app/src/index.ts": "",
     })

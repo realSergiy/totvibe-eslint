@@ -1,8 +1,10 @@
 """Shared machinery for the `cli_ts_test_seam`/`lib_ts_test_seam` bites.
 
-A public TypeScript package exposes the root export plus at most one extra
-seam: `./contracts`, which must map to `./src/contracts.ts` (the schemas
-describing the package's file and wire formats). Three facts enforce that
+A public TypeScript package exposes the root export plus at most two extra
+seams: `./contracts` mapping to `./src/contracts.ts` (the schemas describing
+the package's file and wire formats) and `./exec` mapping to `./src/exec.ts`
+(the process-spawning primitive tests replace via `vi.mock`, which needs the
+module addressable by a bare specifier). Three facts enforce that
 together, whatever the package type: the package's `exports` map exposes
 nothing beyond those seams, its user-story tests reach workspace code only
 through `#` fixture aliases (third-party modules and node builtins are fair
@@ -24,9 +26,8 @@ if TYPE_CHECKING:
     from cerberus.context import Context
     from cerberus.model import CheckResult, Repo
 
-_CONTRACTS_EXPORT_KEY = "./contracts"
-_CONTRACTS_TARGET = "./src/contracts.ts"
-_SEAM_EXPORT_KEYS = frozenset({".", "./package.json", _CONTRACTS_EXPORT_KEY})
+_SEAM_TARGETS = {"./contracts": "./src/contracts.ts", "./exec": "./src/exec.ts"}
+_SEAM_EXPORT_KEYS = frozenset({".", "./package.json", *_SEAM_TARGETS})
 _SEAM_SPECIFIER_PREFIXES = ("#", "node:")
 _PATH_SPECIFIER_PREFIXES = (".", "/")
 _STORY_TEST_PATH = re.compile(r"(?:^|/)stories/[^/]+\.test\.tsx?$")
@@ -74,15 +75,16 @@ def _check_exports_surface(res: CheckResult, manifest_path: str, manifest: dict[
         res.fail(f"{manifest_path}: {subject} exports must include the '.' root seam")
     for key in sorted(subpaths - _SEAM_EXPORT_KEYS):
         res.fail(f"{manifest_path}: {subject} exports expose more than the root seam — {key!r}")
-    if _CONTRACTS_EXPORT_KEY not in subpaths:
-        return
-    targets = _alias_targets(exports[_CONTRACTS_EXPORT_KEY])
-    if not targets or any(target != _CONTRACTS_TARGET for target in targets):
-        res.fail(f"{manifest_path}: {subject} '{_CONTRACTS_EXPORT_KEY}' seam must map to '{_CONTRACTS_TARGET}'")
+    for seam_key, seam_target in _SEAM_TARGETS.items():
+        if seam_key not in subpaths:
+            continue
+        targets = _alias_targets(exports[seam_key])
+        if not targets or any(target != seam_target for target in targets):
+            res.fail(f"{manifest_path}: {subject} '{seam_key}' seam must map to '{seam_target}'")
 
 
 def ts_paths_and_members(repo: Repo, ctx: Context, res: CheckResult) -> tuple[list[str], list[str]] | None:
-    """The repo's paths and bun workspace member dirs, or None (skip recorded) without TypeScript packages."""
+    """The repo's paths and JS/TS workspace member dirs, or None (skip recorded) without TypeScript packages."""
     paths = ctx.paths(repo)
     members = story_docs.ts_member_dirs(repo, ctx, paths)
     if not members:

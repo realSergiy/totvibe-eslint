@@ -19,7 +19,6 @@ class Config:
     check_pipeline: tuple[str, ...]
     wrapped_tools: tuple[str, ...]
     allowed_setup_actions: tuple[str, ...]
-    ci_image: str
     ci_required_ts: tuple[str, ...]
     ci_required_python: tuple[str, ...]
     pyrefly_error_kinds: frozenset[str]
@@ -83,7 +82,6 @@ def _from_dict(data: dict[str, Any]) -> Config:
         check_pipeline=tuple(justfile["check_pipeline"]),
         wrapped_tools=tuple(justfile["wrapped_tools"]),
         allowed_setup_actions=tuple(_table(data, "workflow_toolchain_only")["allowed_setup_actions"]),
-        ci_image=ci["image"],
         ci_required_ts=tuple(_table(ci, "required")["ts"]),
         ci_required_python=tuple(_table(ci, "required")["python"]),
         pyrefly_error_kinds=frozenset(_table(data, "pyrefly")["error_kinds"]),

@@ -2,6 +2,7 @@ import { $ } from '@zyplux/util';
 import { existsSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
+import { createInterface } from 'node:readline/promises';
 
 import type { InferValue } from '#optique';
 
@@ -33,7 +34,9 @@ export const runCloneReferenceRepo = async ({ ref, repo }: CloneReferenceRepoCon
   const dest = `reference_clones/${path.basename(repo).replace(/\.git$/, '')}`;
 
   if (existsSync(dest)) {
-    prompt(`${dest} exists — rm -rf and re-clone? [enter to continue, ^C to abort]`);
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    await rl.question(`${dest} exists — rm -rf and re-clone? [enter to continue, ^C to abort]`);
+    rl.close();
     await rm(dest, { force: true, recursive: true });
   }
 

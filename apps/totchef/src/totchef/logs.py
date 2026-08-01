@@ -28,7 +28,7 @@ def log_dir() -> Path:
 
 
 # The runner column names who is speaking: "chef" for the orchestrator's own
-# lines, the node id (e.g. url.bun, apt_pkg) while a cook runs — see cook_context.
+# lines, the node id (e.g. url.pnpm, apt_pkg) while a cook runs — see cook_context.
 # Width fits the longest node id so the level/message columns stay aligned.
 DEFAULT_RUNNER = Path(sys.argv[0]).stem
 

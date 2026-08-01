@@ -22,16 +22,15 @@ wrapped_tools = ["ruff", "pyrefly", "pytest", "rumdl", "vulture", "cerberus", "e
 [ci_workflow_gate]
 
 [ci_check_sequence]
-image = "ghcr.io/zyplux/ci"
 
 [ci_check_sequence.required]
 ts = [
-    "bun install --frozen-lockfile",
-    "bun run knip",
-    "bun run typecheck",
-    "bun run lint",
+    "pnpm install --frozen-lockfile",
+    "pnpm run knip",
+    "pnpm run typecheck",
+    "pnpm run lint",
     "prettier --check",
-    "bun run test",
+    "pnpm run test",
 ]
 python = [
     "uv sync --locked",
@@ -46,7 +45,7 @@ python = [
 [ci_cerberus_step]
 
 [workflow_toolchain_only]
-allowed_setup_actions = ["astral-sh/setup-uv", "oven-sh/setup-bun"]
+allowed_setup_actions = ["astral-sh/setup-uv", "pnpm/action-setup", "actions/setup-node"]
 
 # Error kinds pinned by the org: they may only appear under `errors`, never at the top level.
 [pyrefly]

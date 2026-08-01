@@ -228,7 +228,7 @@ def _strip_pin(spec: str) -> str:
 class FakeProc:
     """An in-memory double for `cerberus.proc`'s single subprocess boundary.
 
-    Outcomes are served per tool — the program a `bunx <tool> ...` invocation
+    Outcomes are served per tool — the program a `pnpx <tool> ...` invocation
     launches, or `argv[0]` itself for direct invocations; a version-pinned
     spec (`tool@1.2.3`) is served under the bare tool name. A tool that runs
     distinct subcommands can be served per subcommand via a `"tool subcommand"`
@@ -295,7 +295,7 @@ class FakeProc:
         if argv[0] in self.missing:
             raise proc.ToolNotFoundError(argv[0])
         self._snapshot_config_file(argv)
-        launched = argv[1:] if argv[0] == "bunx" and len(argv) > 1 else argv
+        launched = argv[1:] if argv[0] == "pnpx" and len(argv) > 1 else argv
         launched_tool = _strip_pin(launched[0])
         subcommand_key = " ".join([launched_tool, *launched[1:2]])
         tool = subcommand_key if subcommand_key in self.outcomes else launched_tool

@@ -1,9 +1,18 @@
 {
-  "extends": "@zyplux/tsconfig/bun.json",
+  "extends": "@zyplux/tsconfig/node.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": true
+  },
   "include": ["."],
   "references": [
-    { "path": "../../packages/eslint-config" },
-    { "path": "../../packages/util-ts" },
-    { "path": "../fixtures" }
+    {
+      "path": "../../packages/eslint-config"
+    },
+    {
+      "path": "../../packages/util-ts"
+    },
+    {
+      "path": "../fixtures"
+    }
   ]
 }

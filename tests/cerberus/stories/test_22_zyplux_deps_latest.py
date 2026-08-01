@@ -13,10 +13,14 @@ if TYPE_CHECKING:
 
 CHECK_ID = "zyplux_deps_latest"
 
-NPM_UTIL_LOCK = '{"packages": {"@zyplux/util": ["@zyplux/util@0.2.0", {}, "sha512-x"]}}'
+NPM_UTIL_LOCK = "packages:\n  '@zyplux/util@0.2.0':\n    resolution: {integrity: sha512-x}\n"
 NPM_WORKSPACE_LOCK = (
-    '{"workspaces": {"packages/util-ts": {"name": "@zyplux/util",'
-    ' "dependencies": {"@zyplux/tsconfig": "workspace:*"}}}}'
+    "importers:\n"
+    "  packages/util-ts:\n"
+    "    dependencies:\n"
+    "      '@zyplux/tsconfig':\n"
+    "        specifier: workspace:*\n"
+    "        version: link:../tsconfig\n"
 )
 UV_CERBERUS_LOCK = """
 version = 1
@@ -65,7 +69,7 @@ def test_22_1_1_passes_a_repo_that_uses_no_zyplux_published_artifacts(
     run_check_on_disk: RunCheckOnDisk, fake_registry: RegistryDouble, status: type[Status]
 ) -> None:
     files = {
-        "bun.lock": '{"packages": {"typescript": ["typescript@5.9.2", {}, "sha512-x"]}}',
+        "pnpm-lock.yaml": "packages:\n  typescript@5.9.2:\n    resolution: {integrity: sha512-x}\n",
         "justfile": "default:\n    @just --list\n",
         ".github/workflows/ci.yml": "jobs:\n  ci:\n    container: ghcr.io/other-org/ci:1.0.0\n",
     }
@@ -76,7 +80,7 @@ def test_22_1_1_passes_a_repo_that_uses_no_zyplux_published_artifacts(
 def test_22_1_2_ignores_workspace_local_zyplux_packages(
     run_check_on_disk: RunCheckOnDisk, fake_registry: RegistryDouble, status: type[Status]
 ) -> None:
-    result = run_check_on_disk(CHECK_ID, {"bun.lock": NPM_WORKSPACE_LOCK, "uv.lock": UV_WORKSPACE_LOCK})
+    result = run_check_on_disk(CHECK_ID, {"pnpm-lock.yaml": NPM_WORKSPACE_LOCK, "uv.lock": UV_WORKSPACE_LOCK})
     assert (result.status, result.problems, fake_registry.requests) == (status.PASS, [], [])
 
 
@@ -101,7 +105,7 @@ def test_22_2_1_passes_when_the_locked_npm_version_is_the_latest(
     run_check_on_disk: RunCheckOnDisk, fake_registry: RegistryDouble, status: type[Status]
 ) -> None:
     fake_registry.serve_npm("@zyplux/util", "0.2.0")
-    result = run_check_on_disk(CHECK_ID, {"bun.lock": NPM_UTIL_LOCK})
+    result = run_check_on_disk(CHECK_ID, {"pnpm-lock.yaml": NPM_UTIL_LOCK})
     assert (result.status, result.problems) == (status.PASS, [])
 
 
@@ -109,10 +113,10 @@ def test_22_2_2_fails_naming_the_package_versions_and_location_when_the_lock_lag
     run_check_on_disk: RunCheckOnDisk, fake_registry: RegistryDouble, status: type[Status]
 ) -> None:
     fake_registry.serve_npm("@zyplux/util", "0.3.1")
-    result = run_check_on_disk(CHECK_ID, {"bun.lock": NPM_UTIL_LOCK})
+    result = run_check_on_disk(CHECK_ID, {"pnpm-lock.yaml": NPM_UTIL_LOCK})
     assert (result.status, [f.message for f in result.problems]) == (
         status.FAIL,
-        ["`@zyplux/util` is 0.2.0 in bun.lock, latest is 0.3.1; run `just upgrade`"],
+        ["`@zyplux/util` is 0.2.0 in pnpm-lock.yaml, latest is 0.3.1; run `just upgrade`"],
     )
 
 

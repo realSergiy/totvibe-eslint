@@ -22,12 +22,12 @@ BASELINE = resources.files("cerberus").joinpath("baseline.just").read_text()
 CONFORMING = f"# BASELINE\n{BASELINE}\n# CUSTOM\n"
 
 INSTALL_RECIPE = (
-    "# Install both workspaces: bun + uv.\ninstall:\n    bun install\n    uv sync --all-packages --all-groups\n\n"
+    "# Install both workspaces: pnpm + uv.\ninstall:\n    pnpm install\n    uv sync --all-packages --all-groups\n\n"
 )
 DEFAULT_RECIPE = "# List available recipes.\ndefault:\n    @just --list\n\n"
 CLEAN_RECIPE = (
     "# Remove gitignored build artifacts and caches from all workspaces.\n"
-    "clean *flags:\n    bun run cz clean {{ flags }}\n"
+    "clean *flags:\n    pnpm run cz clean {{ flags }}\n"
 )
 
 UNPARSEABLE = "recipe without colon\n"
@@ -36,11 +36,13 @@ WRONG_ALIAS_TARGET = CONFORMING.replace("alias k := knip\n", "alias k := lint\n"
 MISSING_REQUIRED_RECIPE = CONFORMING.replace(DEFAULT_RECIPE, "")
 MISSING_RECOMMENDED = CONFORMING.replace("alias ui := upgrade-interactive\n", "").replace(CLEAN_RECIPE, "")
 WRONG_CHECK_ORDER = CONFORMING.replace(
-    "check: install knip typecheck lint test cerberus", "check: install lint knip typecheck test cerberus"
+    "check: install knip typecheck lint test cerberus",
+    "check: install lint knip typecheck test cerberus",
 )
 INTERLEAVED_CHECK = CONFORMING.replace(
-    "check: install knip typecheck lint test cerberus", "check: install knip build typecheck lint test cerberus"
-) + ("\nbuild:\n    bun run build\n")
+    "check: install knip typecheck lint test cerberus",
+    "check: install knip extra typecheck lint test cerberus",
+) + ("\nextra:\n    echo extra\n")
 DEFAULT_NO_LIST = CONFORMING.replace("default:\n    @just --list\n", "default:\n    @echo hi\n")
 BARE_TOOL_CALL = CONFORMING.replace("    uv run rumdl check --fix\n", "    rumdl check\n")
 WITH_MODULES = CONFORMING + "\nmod infra 'infra/justfile'\nmod tools\nmod? extras\n"
@@ -51,14 +53,14 @@ CERBERUS_IN_CHECK_BODY = NO_CERBERUS_RUN.replace(
     "check: install knip typecheck lint test cerberus\n    uv run cerberus --fix",
 )
 CERBERUS_ONLY_MENTIONED = NO_CERBERUS_RUN.replace(
-    "    bun run lint:fix\n",
-    "    # cerberus runs in ci\n    echo cerberus\n    bun run lint:fix\n",
+    "    pnpm run lint:fix\n",
+    "    # cerberus runs in ci\n    echo cerberus\n    pnpm run lint:fix\n",
 )
 CLEAN_WITHOUT_CZ = CONFORMING.replace(CLEAN_RECIPE, "clean:\n    rm -rf node_modules dist\n")
-CLEAN_RUNS_BARE_CZ = CONFORMING.replace("    bun run cz clean {{ flags }}\n", "    cz clean {{ flags }}\n")
-CLEAN_ONLY_MENTIONED = CONFORMING.replace("    bun run cz clean {{ flags }}\n", '    echo "cz clean is nice"\n')
+CLEAN_RUNS_BARE_CZ = CONFORMING.replace("    pnpm run cz clean {{ flags }}\n", "    cz clean {{ flags }}\n")
+CLEAN_ONLY_MENTIONED = CONFORMING.replace("    pnpm run cz clean {{ flags }}\n", '    echo "cz clean is nice"\n')
 CLEAN_RUNNER_WRAPS_UNRELATED_COMMAND = CONFORMING.replace(
-    "    bun run cz clean {{ flags }}\n", "    bun run echo cz clean\n"
+    "    pnpm run cz clean {{ flags }}\n", "    pnpm run echo cz clean\n"
 )
 
 CUSTOM_TAIL_TRAILING_WS = CONFORMING + "\nsmoke:\n    echo ok   \n"
@@ -67,13 +69,13 @@ WITH_INTERPOLATION = CONFORMING + (
     '\nrecipe := "examples/recipe.toml"\n\nup *args:\n    uv run totchef up --recipe {{ recipe }} {{ args }}\n'
 )
 NO_MARKERS = CONFORMING.replace("# BASELINE\n", "").replace("# CUSTOM\n", "")
-DRIFTED_INSTALL = CONFORMING.replace("    bun install\n", "    bun install --frozen-lockfile\n")
-DRIFTED_INSTALL_LINE = DRIFTED_INSTALL.splitlines().index("    bun install --frozen-lockfile") + 1
+DRIFTED_INSTALL = CONFORMING.replace("    pnpm install\n", "    pnpm install --frozen-lockfile\n")
+DRIFTED_INSTALL_LINE = DRIFTED_INSTALL.splitlines().index("    pnpm install --frozen-lockfile") + 1
 DRIFTED_WITH_TAIL = DRIFTED_INSTALL + "\nsmoke:\n    echo ok\n"
 MARKERS_WITH_TRAILING_WS = CONFORMING.replace("# BASELINE\n", "# BASELINE  \n").replace(
     "\n# CUSTOM\n", "\n# CUSTOM \n"
 ) + ("\nsmoke:\n    echo ok\n")
-UNFIXABLE_DUPLICATE_RECIPE = CONFORMING.replace(INSTALL_RECIPE, "") + "\ninstall:\n    bun install\n"
+UNFIXABLE_DUPLICATE_RECIPE = CONFORMING.replace(INSTALL_RECIPE, "") + "\ninstall:\n    pnpm install\n"
 FREE_FORM_CUSTOM_TAIL = CONFORMING + (
     "\nset dotenv-load := true\n\ngreeting := 'hello'\n\nalias s := smoke\n\n"
     "# Smoke-test the checkout.\nsmoke:\n    echo {{ greeting }}\n"
@@ -165,8 +167,8 @@ def test_1_3_1_fails_when_the_check_recipe_runs_its_steps_out_of_order(
         status.FAIL,
         [
             (
-                "`check` dependencies ['install', 'lint', 'knip', 'typecheck', 'test', 'cerberus'] must contain "
-                "['install', 'knip', 'typecheck', 'lint', 'test'] in order"
+                "`check` dependencies ['install', 'lint', 'knip', 'typecheck', 'test', 'cerberus'] must "
+                "contain ['install', 'knip', 'typecheck', 'lint', 'test'] in order"
             )
         ],
     )
@@ -195,7 +197,7 @@ def test_1_5_1_fails_and_names_the_tool_when_a_recipe_calls_it_directly(
     result = run_justfile_check(BARE_TOOL_CALL)
     assert (result.status, structural_messages(result)) == (
         status.FAIL,
-        ["recipe `lint` runs `rumdl` directly; managed tools must run via `uv run`/`bunx`"],
+        ["recipe `lint` runs `rumdl` directly; managed tools must run via `uv run`/`pnpx`"],
     )
 
 
@@ -311,8 +313,8 @@ def test_1_10_2_fails_naming_the_first_line_that_drifts_from_the_canonical_basel
     assert result.status is status.FAIL
     assert baseline_messages(result) == [
         (
-            f"baseline drift at line {DRIFTED_INSTALL_LINE}: expected `    bun install`, "
-            "actual `    bun install --frozen-lockfile`"
+            f"baseline drift at line {DRIFTED_INSTALL_LINE}: expected `    pnpm install`, "
+            "actual `    pnpm install --frozen-lockfile`"
         )
     ]
 
@@ -367,7 +369,7 @@ def test_1_11_1_fails_when_the_clean_recipe_does_not_invoke_cz_clean(
 
 
 @requires_just
-def test_1_11_2_passes_when_the_clean_recipe_runs_cz_clean_via_bun_run(run_justfile_check: RunJustfileCheck) -> None:
+def test_1_11_2_passes_when_the_clean_recipe_runs_cz_clean_via_pnpm_run(run_justfile_check: RunJustfileCheck) -> None:
     result = run_justfile_check(CONFORMING)
     assert structural_messages(result) == []
 

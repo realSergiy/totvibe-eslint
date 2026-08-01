@@ -1,9 +1,8 @@
 {
   "name": "@zyplux/util",
-  "version": "0.5.1",
-  "description": "Small Bun utilities: assertions, polling, bounded-concurrency mapping, zod-validated JSON reads, repo-URL normalization, package.json/pyproject manifest schemas, and a git/gh shell harness",
+  "version": "0.6.0",
+  "description": "Small utilities: assertions, polling, bounded-concurrency mapping, zod-validated JSON reads, repo-URL normalization, package.json/pyproject manifest schemas, and a git/gh shell harness",
   "keywords": [
-    "bun",
     "utilities",
     "zod",
     "json",
@@ -21,28 +20,44 @@
   },
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./contracts": {
-      "types": "./src/contracts.ts",
-      "default": "./src/contracts.ts"
-    },
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts",
+    "./exec": "./src/exec.ts",
     "./package.json": "./package.json"
   },
   "files": [
     "README.md",
-    "src"
+    "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./contracts": {
+        "types": "./dist/contracts.d.ts",
+        "default": "./dist/contracts.js"
+      },
+      "./exec": {
+        "types": "./dist/exec.d.ts",
+        "default": "./dist/exec.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "prepack": "tsc -b tsconfig.json"
+  },
+  "dependencies": {
+    "smol-toml": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*",
     "zod": "catalog:"
   }

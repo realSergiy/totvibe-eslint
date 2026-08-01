@@ -1,10 +1,10 @@
 import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
 
-import type { Subjects } from './act';
+import type { Subjects } from './act.ts';
 
-import { subjects } from './act';
-import { createNestedGitRepos, workspaceRoot } from './arrange';
-import './matchers';
+import { subjects } from './act.ts';
+import { createNestedGitRepos, workspaceRoot } from './arrange.ts';
+import './matchers.ts';
 
 type ArrangeFixtures = {
   createNestedGitRepos: typeof createNestedGitRepos;
@@ -31,7 +31,7 @@ export const test = libraryTest.extend<ArrangeFixtures & Subjects>({
   workspaceRoot,
 });
 
-export type { Shell } from './act';
-export type { TomlOutcome } from './matchers';
+export type { Shell } from './act.ts';
+export type { TomlOutcome } from './matchers.ts';
 export type { ShellFake } from '@zyplux/tests-fixtures';
 export { describe, expect } from 'vitest';

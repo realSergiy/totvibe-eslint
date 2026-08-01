@@ -52,7 +52,7 @@ def _argv(
     spec: str, scan_roots: list[str], pattern: str = _DEFAULT_PATTERN, ignore: str = _DEFAULT_IGNORE
 ) -> list[str]:
     return [
-        "bunx",
+        "pnpx",
         spec,
         "--pattern",
         pattern,
@@ -134,18 +134,18 @@ def test_28_1_3_fails_with_the_exit_code_when_jscpd_itself_exits_non_zero(
     result = run_jscpd()
     assert result.findings == [
         fail(
-            f"jscpd exited 3; run `bunx {npm_tool_spec('jscpd')} --pattern {_DEFAULT_PATTERN}"
+            f"jscpd exited 3; run `pnpx {npm_tool_spec('jscpd')} --pattern {_DEFAULT_PATTERN}"
             f" --ignore {_DEFAULT_IGNORE} {repo_root.resolve()}` locally for details",
         )
     ]
 
 
-def test_28_1_4_errors_when_bunx_is_not_on_path(
+def test_28_1_4_errors_when_pnpx_is_not_on_path(
     run_jscpd: RunJscpdDupes, fake_proc: FakeProc, error: MakeFinding
 ) -> None:
-    fake_proc.serve_missing("bunx")
+    fake_proc.serve_missing("pnpx")
     result = run_jscpd()
-    assert result.findings == [error("`bunx` not found on PATH")]
+    assert result.findings == [error("`pnpx` not found on PATH")]
 
 
 def test_28_1_5_errors_when_jscpd_writes_no_readable_json_report(
@@ -224,7 +224,8 @@ def test_28_4_1_scans_only_the_directories_the_workspace_manifests_register(
     (repo_root / "docs" / "scratch").mkdir(parents=True)
     run_jscpd(
         files={
-            "package.json": json.dumps({"workspaces": {"packages": ["apps/*"]}}),
+            "package.json": "{}",
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n",
             "pyproject.toml": '[tool.uv.workspace]\nmembers = ["libs/py"]\n',
         }
     )
@@ -243,12 +244,12 @@ def test_28_4_2_falls_back_to_the_repo_root_when_no_manifest_declares_workspaces
     assert _mask_report_dir(fake_proc.calls) == [expected]
 
 
-def test_28_4_3_errors_when_package_json_is_not_valid_json_instead_of_crashing(
+def test_28_4_3_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
     run_jscpd: RunJscpdDupes, fake_proc: FakeProc, status: type[Status]
 ) -> None:
-    result = run_jscpd(files={"package.json": "{not json"})
+    result = run_jscpd(files={"pnpm-workspace.yaml": "packages: ["})
     assert result.findings[0].status == status.ERROR
-    assert result.findings[0].message.startswith("package.json is not valid JSON:")
+    assert result.findings[0].message.startswith("pnpm-workspace.yaml is not valid YAML:")
     assert fake_proc.calls == []
 
 
@@ -284,5 +285,5 @@ def test_28_6_1_invokes_jscpd_at_the_pinned_version(
 ) -> None:
     fake_proc.serve("jscpd", output_files=_UNDER_THRESHOLD_REPORT)
     run_jscpd()
-    assert fake_proc.calls[0][0][:2] == ["bunx", f"jscpd@{npm_tool_pins['jscpd']}"]
+    assert fake_proc.calls[0][0][:2] == ["pnpx", f"jscpd@{npm_tool_pins['jscpd']}"]
     assert fake_proc.calls[0][0][1] == npm_tool_spec("jscpd")

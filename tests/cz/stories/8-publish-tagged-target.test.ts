@@ -17,29 +17,35 @@ describe('8.1 skipping an already-published target', () => {
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
     expect(logs).toHaveLogged('@zyplux/util 1.2.3 is already published; nothing to do');
-    expect(shell).not.toHaveRunMatching(/bun pm pack|podman|uv build/);
+    expect(shell).not.toHaveRunMatching(/pnpm pack|podman|uv build/);
   });
 });
 
 describe('8.2 publishing to each registry kind', () => {
   test('8.2.1 packs and publishes an npm target', async ({ cz, registries, shell, targets }) => {
     registries.setPublished({ npmPublished: false });
-    shell.on(/bun pm pack/, '');
+    shell.on(/pnpm pack/, '');
+    shell.on(/npm publish/, '');
 
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
-    expect(shell.commandsMatching(/bun pm pack/)).toEqual([
-      `cd ${targets.util.dir} && bun pm pack && bunx npm@11 publish ./*.tgz --access public`,
-    ]);
+    expect(shell.calls).toContainEqual({ argv: ['pack'], cwd: targets.util.dir, program: 'pnpm' });
+    expect(shell.calls).toContainEqual({
+      argv: ['publish', 'zyplux-util-1.2.3.tgz', '--access', 'public'],
+      cwd: targets.util.dir,
+      program: 'npm',
+    });
   });
 
   test('8.2.2 builds and publishes a pypi target', async ({ cz, registries, shell }) => {
     registries.setPublished({ pypiPublished: false });
     shell.on('uv build', '');
+    shell.on('uv publish', '');
 
     await cz.run('publish-tagged-target', 'cerberus-v2.3.4');
 
-    expect(shell.commandsMatching('uv build')).toEqual(['uv build --package zyplux-cerberus && uv publish']);
+    expect(shell.commandsMatching('uv build')).toEqual(['uv build --package zyplux-cerberus']);
+    expect(shell.commandsMatching('uv publish')).toEqual(['uv publish']);
   });
 
   test.for(MISSING_GHCR_CREDENTIALS)(
@@ -64,8 +70,13 @@ describe('8.2 publishing to each registry kind', () => {
 
     await cz.run('publish-tagged-target', 'ci-image-v3.4.5');
 
+    expect(shell.calls).toContainEqual({
+      argv: ['login', 'ghcr.io', '-u', 'zyplux-bot', '--password-stdin'],
+      program: 'podman',
+      stdin: 'gh-token',
+    });
     expect(shell.commandsMatching('podman')).toEqual([
-      expect.stringContaining('podman login ghcr.io -u zyplux-bot --password-stdin < '),
+      'podman login ghcr.io -u zyplux-bot --password-stdin',
       `podman build -t ghcr.io/zyplux/ci:3.4.5 -t ghcr.io/zyplux/ci:latest ${targets.ci.dir}`,
       'podman push ghcr.io/zyplux/ci:3.4.5',
       'podman push ghcr.io/zyplux/ci:latest',

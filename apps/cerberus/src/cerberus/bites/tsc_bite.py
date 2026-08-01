@@ -41,7 +41,7 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
         return res
 
     manifest = _manifest(root)
-    if "workspaces" not in manifest:
+    if ctx.file(repo, "pnpm-workspace.yaml") is None:
         res.skip("not a workspace")
         return res
     if not _has_tsconfig(ctx.paths(repo)):

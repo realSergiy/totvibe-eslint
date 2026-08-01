@@ -1,4 +1,4 @@
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 export const tanstackRoutes: ConfigWithExtends = {
   files: ['**/routes/**/*.{ts,tsx}'],

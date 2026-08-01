@@ -1,8 +1,8 @@
 import type { ZodType } from 'zod';
 
-import type { SafeResult } from './result';
+import type { SafeResult } from './result.ts';
 
-import { attemptAsync } from './result';
+import { attemptAsync } from './result.ts';
 
 type HttpMethod = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 

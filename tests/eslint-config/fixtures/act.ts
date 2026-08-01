@@ -6,9 +6,9 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 
-import type { RuleLintOptions } from './arrange';
+import type { RuleLintOptions } from './arrange.ts';
 
-import { eslintConfigDir, suiteDir } from './arrange';
+import { eslintConfigDir, suiteDir } from './arrange.ts';
 
 export type ZypluxConfig = ReturnType<typeof zyplux>;
 

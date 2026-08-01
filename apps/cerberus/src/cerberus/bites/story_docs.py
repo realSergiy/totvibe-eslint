@@ -1,6 +1,6 @@
 """Shared machinery for the `story_tests_lockstep_py`/`story_tests_lockstep_ts` bites.
 
-A "package" is a uv/bun workspace member, or the repo root when the language
+A "package" is a uv/JS-TS workspace member, or the repo root when the language
 has no workspace (a single-project repo). A package needs user-story tests
 when it exposes a public interface — a CLI entry point, a published
 `exports`/`main` surface, or tests of its own already exist for it — and
@@ -26,6 +26,8 @@ import re
 import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from cerberus import workspaces
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -231,23 +233,11 @@ def _py_package_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
 
 
 def ts_member_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
-    """Every bun workspace member dir — including the tests/ harness members that package_dirs excludes."""
-    content = ctx.file(repo, "package.json")
-    if content is None:
+    """Every JS/TS workspace member dir — including the tests/ harness members that package_dirs excludes."""
+    if ctx.file(repo, "package.json") is None:
         return []
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, dict):
-        return []
-    workspaces = data.get("workspaces")
-    globs: list[str] | None = None
-    if isinstance(workspaces, list):
-        globs = [g for g in workspaces if isinstance(g, str)]
-    elif isinstance(workspaces, dict):
-        globs = [g for g in workspaces.get("packages", []) if isinstance(g, str)]
-    if globs is not None:
+    globs = workspaces.ts_member_globs(repo, ctx)
+    if globs:
         return _member_dirs(paths, globs, "package.json")
     return [""]
 

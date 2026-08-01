@@ -5,7 +5,7 @@ import { registerMatchers } from '@zyplux/tests-fixtures';
 import path from 'node:path';
 import { expect } from 'vitest';
 
-import type { RuleLintWithOptions, ZypluxConfig } from './act';
+import type { RuleLintWithOptions, ZypluxConfig } from './act.ts';
 
 export const isAbsolutePath = (candidate: string) => path.isAbsolute(candidate);
 

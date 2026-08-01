@@ -1,16 +1,22 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { test as base, vi } from 'vitest';
 
-import type { ConsoleCapture } from './console';
-import type { FetchFake } from './fetch';
-import type { TempDir } from './fs';
-import type { PromptFake } from './prompt';
-import type { ShellFake } from './shell';
+import type { ConsoleCapture } from './console.ts';
+import type { FetchFake } from './fetch.ts';
+import type { TempDir } from './fs.ts';
+import type { PromptFake } from './prompt.ts';
+import type { ShellFake } from './shell.ts';
 
-import { createConsoleCapture } from './console';
-import { createFetchFake } from './fetch';
-import { createTempDir } from './fs';
-import { createPromptFake } from './prompt';
-import { createShellFake } from './shell';
+import { createConsoleCapture } from './console.ts';
+import { createFetchFake } from './fetch.ts';
+import { createTempDir } from './fs.ts';
+import { createPromptFake } from './prompt.ts';
+import { createShellFake } from './shell.ts';
+
+vi.mock('node:timers/promises', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:timers/promises')>();
+  return { ...actual, setTimeout: vi.fn(actual.setTimeout) };
+});
 
 export type EnvStub = {
   set: (name: string, value: string) => void;
@@ -69,12 +75,11 @@ export const cliTest = libraryTest.extend<CliFixtures>({
   },
   instantSleep: [
     async ({}, use) => {
-      const originalSleep = Bun.sleep;
-      Bun.sleep = () => Promise.resolve();
+      vi.mocked(sleep).mockResolvedValue(undefined);
       try {
         await use(undefined);
       } finally {
-        Bun.sleep = originalSleep;
+        vi.mocked(sleep).mockReset();
       }
     },
     { auto: true },

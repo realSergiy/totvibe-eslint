@@ -1,11 +1,11 @@
 # @zyplux/eslint-config
 
-Shared ESLint flat config and custom rules. Ships TypeScript source — consumed directly under Bun.
+Shared ESLint flat config and custom rules. Ships TypeScript source.
 
 ## Install
 
 ```sh
-bun add -D @zyplux/eslint-config eslint typescript
+pnpm add -D @zyplux/eslint-config eslint typescript
 ```
 
 ## Use

@@ -1,8 +1,10 @@
 import type { ZodType } from 'zod';
 
-import { attempt } from './result';
+import { parse } from 'smol-toml';
 
-export const parseToml = <T>(text: string, schema: ZodType<T>) => schema.parse(Bun.TOML.parse(text));
+import { attempt } from './result.ts';
+
+export const parseToml = <T>(text: string, schema: ZodType<T>) => schema.parse(parse(text));
 
 export const tryParseToml = <T>(text: string, schema: ZodType<T>): T | undefined => {
   const result = attempt(() => parseToml(text, schema));

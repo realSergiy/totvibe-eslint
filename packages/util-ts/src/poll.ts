@@ -1,3 +1,5 @@
+import { setTimeout } from 'node:timers/promises';
+
 type PollOptions = { attempts: number; intervalMs: number };
 
 export const poll = async <T>(probe: () => Promise<T | undefined>, { attempts, intervalMs }: PollOptions) => {
@@ -6,7 +8,7 @@ export const poll = async <T>(probe: () => Promise<T | undefined>, { attempts, i
     if (found !== undefined) {
       return found;
     }
-    await Bun.sleep(intervalMs);
+    await setTimeout(intervalMs);
   }
   return;
 };

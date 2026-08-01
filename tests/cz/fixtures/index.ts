@@ -2,10 +2,10 @@ import type { CliRunner } from '@zyplux/tests-fixtures';
 
 import { cliTest } from '@zyplux/tests-fixtures';
 
-import type { Catalog } from './act';
-import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange';
+import type { Catalog } from './act.ts';
+import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange.ts';
 
-import { createCatalog, createCz } from './act';
+import { createCatalog, createCz } from './act.ts';
 import {
   createInitRepo,
   createLiveWorkspace,
@@ -15,7 +15,7 @@ import {
   createWriteArtifacts,
   enterCwd,
   seedReleaseTargets,
-} from './arrange';
+} from './arrange.ts';
 
 type CzFixtures = {
   catalog: Catalog;
@@ -77,6 +77,6 @@ export const tempCwdTest = test.extend<{ initRepo: InitRepo; tempCwd: undefined;
   },
 });
 
-export type { Catalog } from './act';
+export type { Catalog } from './act.ts';
 export type { TempDir } from '@zyplux/tests-fixtures';
 export { describe, expect } from 'vitest';

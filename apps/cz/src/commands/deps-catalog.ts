@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { InferValue } from '#optique';
@@ -35,7 +36,8 @@ type DepsCatalogConfig = InferValue<typeof depsCatalogCommand>;
 export const runDepsCatalog = async ({ dir, out }: DepsCatalogConfig) => {
   const { repos, unresolved } = await collectDepRepos(dir);
   const outPath = path.isAbsolute(out) ? out : path.join(dir, out);
-  await Bun.write(outPath, `${JSON.stringify(repos, undefined, JSON_INDENT)}\n`);
+  await mkdir(path.dirname(outPath), { recursive: true });
+  await writeFile(outPath, `${JSON.stringify(repos, undefined, JSON_INDENT)}\n`);
 
   console.log(`Wrote ${repos.length} source repositories to ${outPath}`);
   if (unresolved.length > 0) {

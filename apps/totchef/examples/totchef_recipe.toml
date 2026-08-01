@@ -157,17 +157,25 @@ update_action = ["self", "update"]
 depends_on = ["url.uv"]
 packages = ["ruff", "pyrefly", "graphifyy"]
 
-[url.bun]
-url = "bun.sh/install"
-update_action = ["upgrade"]
+[url.node]
+url = "fnm.vercel.app/install"
+bin = "fnm"
+args = ["--skip-shell"]
+update_action = "rerun-installer"
+post_hook = 'eval "$(fnm env)" && fnm install 26 --use && fnm default 26'
 
-[bun]
-depends_on = ["url.bun"]
+[url.pnpm]
+url = "get.pnpm.io/install.sh"
+depends_on = ["url.node"]
+update_action = ["self-update"]
+
+[pnpm]
+depends_on = ["url.pnpm"]
 packages = ["@earendil-works/pi-coding-agent", "@zyplux/cz"]
-post_hook = 'mkdir -p "$HOME/.local/bin" && ln -sf "${BUN_INSTALL:-$HOME/.bun}/bin/pi" "$HOME/.local/bin/pi"'
+post_hook = 'mkdir -p "$HOME/.local/bin" && ln -sf "${PNPM_HOME:-$HOME/.local/share/pnpm}/pi" "$HOME/.local/bin/pi"'
 
 [skills]
-depends_on = ["url.bun"]
+depends_on = ["url.pnpm"]
 repos = ["zyplux/zyp-skills"]
 
 [url.claude]

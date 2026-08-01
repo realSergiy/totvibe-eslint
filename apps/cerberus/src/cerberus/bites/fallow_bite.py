@@ -3,7 +3,7 @@ fallow's dead-code analysis (unused files, exports, dependencies, circular
 imports) and its health analysis (functions above fallow's complexity
 thresholds) over the checkout and fails on any finding. Cerberus owns the
 whole fallow invocation: it writes its own config — ignoring only the
-directories a bun workspace glob matches that hold no package.json, which
+directories a workspace glob matches that hold no package.json, which
 fallow would otherwise warn about during workspace discovery, and switching
 off fallow's default duplicate ignores so test files are analyzed like any
 other code — and runs the
@@ -17,13 +17,14 @@ Fallow analyzes only TypeScript/JavaScript, so a repo without a
 
 Each analysis writes its report to a file via fallow's own `--output-file`
 rather than being read off `outcome.stdout`: relaying a large JSON report
-through the `bunx` -> fallow subprocess pipe chain has been observed to
-truncate silently at a pipe-buffer-sized boundary on real-world repos
-(confirmed against `fallow@3.3.0` — a multi-hundred-KB health report cuts
-off at an exact multiple of 64KiB), which produces unparseable JSON and
-would otherwise be indistinguishable from a genuine fallow crash. Writing
-to a file sidesteps that pipe entirely, matching the same file-based
-report convention `jscpd_bite` already uses for the same reason.
+through the runner (pnpx) -> fallow subprocess pipe chain has
+been observed to truncate silently at a pipe-buffer-sized boundary on
+real-world repos (confirmed against `fallow@3.3.0` — a multi-hundred-KB
+health report cuts off at an exact multiple of 64KiB), which produces
+unparseable JSON and would otherwise be indistinguishable from a genuine
+fallow crash. Writing to a file sidesteps that pipe entirely, matching the
+same file-based report convention `jscpd_bite` already uses for the same
+reason.
 
 The same size problem shows up again one layer up, in cerberus's own
 terminal output: itemizing every offender inline is unreadable past a
@@ -46,8 +47,11 @@ from __future__ import annotations
 
 import json
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import yaml
 
 from cerberus import proc, tool_pins, workspaces
 from cerberus.model import CheckResult, Scope
@@ -188,17 +192,17 @@ def _persist_report(ctx: Context, report: dict[str, Any], filename: str) -> Path
     return report_path.relative_to(repo_root)
 
 
-def _record_dead_code(
-    res: CheckResult,
-    ctx: Context,
-    outcome: subprocess.CompletedProcess[str],
-    report: dict[str, Any] | None,
-    *,
-    verbose: bool,
-) -> None:
+@dataclass(frozen=True)
+class _Analysis:
+    outcome: subprocess.CompletedProcess[str]
+    report: dict[str, Any] | None
+
+
+def _record_dead_code(res: CheckResult, ctx: Context, analysis: _Analysis, *, verbose: bool, runner: str) -> None:
+    outcome, report = analysis.outcome, analysis.report
     if outcome.returncode == 0:
         return
-    rerun_hint = f"run `bunx {tool_pins.format_spec('fallow')} dead-code` locally for details"
+    rerun_hint = f"run `{runner} {tool_pins.format_spec('fallow')} dead-code` locally for details"
     issue_count = report.get("total_issues") if report is not None else None
     if report is None or issue_count is None:
         res.fail(f"fallow dead-code exited {outcome.returncode}; {rerun_hint}")
@@ -213,16 +217,15 @@ def _record_dead_code(
         res.fail("\n".join([f"fallow found {issue_count} dead-code issues", *issue_lines]))
 
 
-def _record_complexity(
-    res: CheckResult, ctx: Context, outcome: subprocess.CompletedProcess[str], report: dict[str, Any] | None
-) -> None:
+def _record_complexity(res: CheckResult, ctx: Context, analysis: _Analysis, *, runner: str) -> None:
+    outcome, report = analysis.outcome, analysis.report
     if outcome.returncode == 0:
         return
     offenders = report.get("findings") if report is not None else None
     if report is None or not offenders:
         res.fail(
             f"fallow health exited {outcome.returncode};"
-            f" run `bunx {tool_pins.format_spec('fallow')} health` locally for details"
+            f" run `{runner} {tool_pins.format_spec('fallow')} health` locally for details"
         )
         return
     header = _health_status_line(report) or f"fallow found {len(offenders)} functions above its complexity thresholds"
@@ -237,7 +240,7 @@ def _packageless_member_dirs(repo: Repo, ctx: Context) -> list[str]:
     repo_root = ctx.source.root.resolve()
     packageless = {
         match.relative_to(repo_root).as_posix()
-        for glob in workspaces.bun_member_globs(repo, ctx)
+        for glob in workspaces.ts_member_globs(repo, ctx)
         for match in repo_root.glob(glob)
         if match.is_dir() and not (match / "package.json").is_file()
     }
@@ -251,9 +254,11 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
         return res
     try:
         ignored_dirs = _packageless_member_dirs(repo, ctx)
-    except json.JSONDecodeError as exc:
-        res.error(f"package.json is not valid JSON: {exc}")
+    except yaml.YAMLError as exc:
+        res.error(f"pnpm-workspace.yaml is not valid YAML: {exc}")
         return res
+    runner_prefix = ["pnpx"]
+    runner = " ".join(runner_prefix)
     outcomes: dict[str, subprocess.CompletedProcess[str]] = {}
     reports: dict[str, dict[str, Any] | None] = {}
     with tempfile.TemporaryDirectory(prefix="cerberus-fallow-") as shield_dir:
@@ -264,15 +269,17 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
         fallow_spec = tool_pins.format_spec("fallow")
         for analysis in ("dead-code", "health"):
             report_path = Path(shield_dir) / f"{analysis}-report.json"
-            argv = ["bunx", fallow_spec, analysis, *flags, "--output-file", str(report_path)]
+            argv = [*runner_prefix, fallow_spec, analysis, *flags, "--output-file", str(report_path)]
             try:
                 outcomes[analysis] = proc.run(argv, cwd=Path(shield_dir))
             except proc.ToolNotFoundError as exc:
                 res.error(str(exc))
                 return res
             reports[analysis] = _load_report(report_path)
-    _record_dead_code(res, ctx, outcomes["dead-code"], reports["dead-code"], verbose=ctx.verbose)
-    _record_complexity(res, ctx, outcomes["health"], reports["health"])
+    _record_dead_code(
+        res, ctx, _Analysis(outcomes["dead-code"], reports["dead-code"]), verbose=ctx.verbose, runner=runner
+    )
+    _record_complexity(res, ctx, _Analysis(outcomes["health"], reports["health"]), runner=runner)
     if not res.findings:
         if reports["health"] is not None:
             res.detail = _health_status_line(reports["health"])

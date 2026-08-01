@@ -3,17 +3,17 @@ import type { TestAPI } from 'vitest';
 
 import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
 
-import type { PrintedConfig } from './act';
+import type { PrintedConfig } from './act.ts';
 
-import { createFixRule, createLintRule, createMergedLint, parsePrintedConfig, printConfig, subjects } from './act';
-import { loadRulesSnapshot } from './arrange';
+import { createFixRule, createLintRule, createMergedLint, parsePrintedConfig, printConfig, subjects } from './act.ts';
+import { loadRulesSnapshot } from './arrange.ts';
 import {
   applySuggestion,
   expectEachToReport,
   expectEachToReportNothing,
   isAbsolutePath,
   tsconfigRootDirs,
-} from './matchers';
+} from './matchers.ts';
 
 type EslintFixtures = {
   applySuggestion: typeof applySuggestion;
@@ -66,7 +66,7 @@ export const test: TestAPI<EslintFixtures & LibraryFixtures> = libraryTest.exten
   zyplux: makeFixture(subjects.zyplux),
 });
 
-export type { PrintedConfig, ZypluxConfig } from './act';
-export { lintMatchers } from './matchers';
+export type { PrintedConfig, ZypluxConfig } from './act.ts';
+export { lintMatchers } from './matchers.ts';
 export type { Linter } from 'eslint';
 export { describe, expect } from 'vitest';

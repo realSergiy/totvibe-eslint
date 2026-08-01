@@ -102,7 +102,7 @@ def test_16_1_3_prints_one_line_per_active_bite_with_its_id_and_outcome(
             continue
         rendered = (f"🐾 {check_id}", f"💢 {check_id}:", f"○ {check_id}:")
         assert any(line in result.output for line in rendered)
-    assert "💢 codeowners_coverage:" in result.output
+    assert "error: 💢 codeowners_coverage:" in result.output
     assert "🐾 justfile" in result.output
 
 
@@ -221,7 +221,7 @@ def test_16_6_2_runs_an_off_bite_when_named_explicitly_with_check(
     result = invoke_lint("--check", "codeowners_coverage")
 
     assert result.exit_code == 1
-    assert "💢 codeowners_coverage:" in result.output
+    assert "error: 💢 codeowners_coverage:" in result.output
 
 
 @requires_just

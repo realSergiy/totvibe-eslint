@@ -36,7 +36,7 @@ def test_7_1_1_passes_when_a_step_runs_cerberus_via_uv_run_or_the_published_uvx_
 def test_7_2_1_fails_when_workflow_steps_exist_but_none_run_cerberus(
     run_cerberus_step: RunCerberusStep, fail: MakeFinding
 ) -> None:
-    result = run_cerberus_step(_workflow("bun run test"))
+    result = run_cerberus_step(_workflow("pnpm run test"))
     assert result.findings == [fail("no CI workflow runs cerberus (add `uvx zyplux-cerberus` to ci)")]
 
 

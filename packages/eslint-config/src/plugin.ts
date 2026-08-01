@@ -1,13 +1,13 @@
 import type { ESLint } from 'eslint';
 
-import { version } from '#package.json';
+import pkg from '#package.json' with { type: 'json' };
 
-import { rules } from './rules/index';
+import { rules } from './rules/index.ts';
 
 export const plugin: ESLint.Plugin = {
   meta: {
     name: '@zyplux/eslint-config',
-    version,
+    version: pkg.version,
   },
   rules,
 };

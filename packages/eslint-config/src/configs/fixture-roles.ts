@@ -1,13 +1,14 @@
 import { tryParseJson } from '@zyplux/util';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 
 import type { WorkspaceManifest } from '#contracts';
 
-import { WorkspaceManifestSchema } from '#contracts';
+import { PnpmWorkspaceSchema, WorkspaceManifestSchema } from '#contracts';
 import { plugin } from '#plugin';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 const WILDCARD_SUFFIX = '/*';
 const TESTS_DIR_PREFIX = 'tests/';
@@ -20,10 +21,20 @@ const readManifest = (packageJsonPath: string) => {
   }
 };
 
-const workspaceGlobs = (manifest: undefined | WorkspaceManifest) => {
+const manifestWorkspaceGlobs = (manifest: undefined | WorkspaceManifest) => {
   const { workspaces } = manifest ?? {};
   if (workspaces === undefined) return [];
   return Array.isArray(workspaces) ? workspaces : (workspaces.packages ?? []);
+};
+
+const pnpmWorkspaceGlobs = (root: string) => {
+  try {
+    const source = readFileSync(path.join(root, 'pnpm-workspace.yaml'), 'utf8');
+    const parsed = PnpmWorkspaceSchema.safeParse(parseYaml(source));
+    return parsed.success ? (parsed.data.packages ?? []) : [];
+  } catch {
+    return [];
+  }
 };
 
 const globMemberDirs = (root: string, glob: string) => {
@@ -47,8 +58,10 @@ const subjectEntries = (root: string, glob: string) =>
     });
 
 const subjectNamesByBasename = (root: string) => {
-  const rootManifest = readManifest(path.join(root, 'package.json'));
-  const entries = workspaceGlobs(rootManifest).flatMap(glob => subjectEntries(root, glob));
+  const pnpmGlobs = pnpmWorkspaceGlobs(root);
+  const globs =
+    pnpmGlobs.length > 0 ? pnpmGlobs : manifestWorkspaceGlobs(readManifest(path.join(root, 'package.json')));
+  const entries = globs.flatMap(glob => subjectEntries(root, glob));
   return new Map(entries.map(({ basename, name }) => [basename, name] as const));
 };
 

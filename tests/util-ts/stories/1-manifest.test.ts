@@ -5,7 +5,7 @@ const packageJsonText = [
   '  "name": "@scope/app",',
   '  "dependencies": { "zod": "catalog:" },',
   '  "workspaces": { "catalog": { "react": "^19" } },',
-  '  "scripts": { "build": "bun build" }',
+  '  "scripts": { "build": "tsc -b" }',
   '}',
 ].join('\n');
 

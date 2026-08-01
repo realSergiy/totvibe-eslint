@@ -1,6 +1,6 @@
 (
     """VersionedCook for [skills] — Claude Code skills fetched from GitHub repos via the `skills` CLI (skills.sh), """
-    """run through `bunx`. Every add targets `--agent claude-code universal`: two distinct agent dirs keep the CLI """
+    """run through `pnpx`. Every add targets `--agent claude-code universal`: two distinct agent dirs keep the CLI """
     """in symlink mode (a single-agent add silently switches to copy mode and strands the store), so each """
     """skill's files live once in the canonical ~/.agents/skills store — the source of truth any agent can """
     """share — and ~/.claude/skills/<skill> symlinks into it. An agent entry that isn't that symlink (say a """
@@ -16,9 +16,9 @@
     """`#hash` content id; a never-installed repo's skills are unknowable before its first `add`, so it plans """
     """as a single repo row that `list_reportable` splits into per-skill rows once the install lands. A skill """
     """of the "cli" kind (e.g. peek) ships its own package.json `bin`; the skills CLI installs its files but """
-    """never chmods or links that binary onto PATH, so this cook does — chmod +x plus `bun link` from the """
-    """skill's own directory, on every sync (even a converged one), best-effort and idempotent like """
-    """bun_cook's node shim. Runs as the invoking user; depends on [url] (bun)."""
+    """never chmods or links that binary onto PATH, so this cook does — chmod +x plus `pnpm link` from the """
+    """skill's own directory, on every sync (even a converged one), best-effort and idempotent. Runs as the """
+    """invoking user; depends on [url] (pnpm)."""
 )
 
 import json
@@ -292,12 +292,12 @@ def bin_paths(package_json: Path) -> list[str]:
     return [bin_field] if bin_field else []
 
 
-def link_cli_binary(bun: Path, name: str) -> None:
+def link_cli_binary(pnpm: Path, name: str) -> None:
     (
         """A skill of the "cli" kind ships its own package.json `bin`; the skills CLI installs the files but """
         """never chmods or links the binary onto PATH. Mirror zyp-skills' skillman.py: chmod the script """
-        """executable (git doesn't preserve the bit) and `bun link` from within the skill's canonical store """
-        """directory. Best-effort and idempotent, like bun_cook's node shim — runs on every sync, so a """
+        """executable (git doesn't preserve the bit) and `pnpm link` from within the skill's canonical store """
+        """directory. Best-effort and idempotent — runs on every sync, so a """
         """converged re-run restores the link if it was removed."""
     )
     skill_dir = canonical_skills_dir() / name
@@ -312,7 +312,7 @@ def link_cli_binary(bun: Path, name: str) -> None:
         if script.exists():
             script.chmod(script.stat().st_mode | 0o111)
     try:
-        shell.stream([str(bun), "link"], note=f"Linking {name} CLI binary", cwd=skill_dir)
+        shell.stream([str(pnpm), "link"], note=f"Linking {name} CLI binary", cwd=skill_dir)
     except subprocess.CalledProcessError as exc:
         logger.warning("{name}: could not link CLI binary: {exc}", name=name, exc=exc)
 
@@ -386,10 +386,10 @@ class SkillsCook(VersionedCook):
 
     @override
     def sync(self, to_install: list[str], to_upgrade: list[str]) -> SyncOutcome:
-        bunx = find_binary("bunx")
-        bun = find_binary("bun")
-        if not bunx or not bun:
-            return SyncOutcome("hard_fail", "bun/bunx not found — the [url.bun] section must run before [skills].")
+        pnpx = find_binary("pnpx")
+        pnpm = find_binary("pnpm")
+        if not pnpx or not pnpm:
+            return SyncOutcome("hard_fail", "pnpm/pnpx not found — the [url.pnpm] section must run before [skills].")
 
         repos = list(dict.fromkeys(self._repo_of(target) for target in to_install + to_upgrade))
         failures: list[str] = []
@@ -400,7 +400,7 @@ class SkillsCook(VersionedCook):
             )
             tag_width = max(len(repo) for repo in repos)
             with ThreadPoolExecutor() as pool:
-                pending = {pool.submit(self._add_one, bunx, repo, tag_width): repo for repo in repos}
+                pending = {pool.submit(self._add_one, pnpx, repo, tag_width): repo for repo in repos}
                 for future in as_completed(pending):
                     repo = pending[future]
                     try:
@@ -411,7 +411,7 @@ class SkillsCook(VersionedCook):
 
         for name, info in lockfile_skills().items():
             if info.source in self.repos:
-                link_cli_binary(bun, name)
+                link_cli_binary(pnpm, name)
 
         if failures:
             return SyncOutcome("hard_fail", f"{len(failures)} skill repo(s) failed: " + ", ".join(failures))
@@ -425,10 +425,10 @@ class SkillsCook(VersionedCook):
         return next(repo for repo in self.repos if target == repo or target.startswith(f"{repo}/"))
 
     @staticmethod
-    def _add_one(bunx: Path, repo: str, tag_width: int) -> str:
+    def _add_one(pnpx: Path, repo: str, tag_width: int) -> str:
         before = skills_for_source(lockfile_skills(), repo)
         shell.stream(
-            [str(bunx), "skills", "add", repo, "-g", "--agent", *AGENTS, "--skill", "*", "-y"],
+            [str(pnpx), "skills", "add", repo, "-g", "--agent", *AGENTS, "--skill", "*", "-y"],
             f"[{repo:>{tag_width}}]",
             note="Installing skills",
         )

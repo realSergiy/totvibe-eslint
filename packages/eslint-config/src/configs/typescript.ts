@@ -2,7 +2,7 @@ import type { Linter } from 'eslint';
 
 import tseslint from 'typescript-eslint';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 const allOverrides: Linter.RulesRecord = {
   '@typescript-eslint/consistent-return': 'off', // recommended noImplicitReturns over this rule https://typescript-eslint.io/rules/consistent-return

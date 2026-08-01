@@ -1,6 +1,6 @@
 import eslint from '@eslint/js';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 const arrowOnlyMessage = 'Use an arrow function. If `this`/`arguments`/`new.target` are needed, redesign.';
 

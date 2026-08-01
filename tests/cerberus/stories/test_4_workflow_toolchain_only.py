@@ -21,9 +21,10 @@ _CLEAN_WORKFLOW = (
     "    steps:\n"
     "      - uses: actions/checkout@v6\n"
     "      - uses: astral-sh/setup-uv@v8.2.0\n"
-    "      - uses: oven-sh/setup-bun@v2\n"
+    "      - uses: pnpm/action-setup@v4\n"
+    "      - uses: actions/setup-node@v5\n"
     "      - run: uv sync --locked\n"
-    "      - run: bun install --frozen-lockfile\n"
+    "      - run: pnpm install --frozen-lockfile\n"
 )
 
 
@@ -35,21 +36,24 @@ def run_workflow_tooling(run_check_with_workflows: RunCheckWithWorkflows) -> Run
 def test_4_1_1_flags_a_github_action_that_sets_up_a_disallowed_tool(
     run_workflow_tooling: RunWorkflowTooling, fail: MakeFinding
 ) -> None:
-    wf = "jobs:\n  ci:\n    steps:\n      - uses: actions/setup-node@v4\n"
+    wf = "jobs:\n  ci:\n    steps:\n      - uses: actions/setup-python@v5\n"
 
     result = run_workflow_tooling({"ci.yml": wf})
 
-    assert result.findings == [fail("ci.yml: installs a tool via `actions/setup-node`; the toolchain is uv + bun")]
+    assert result.findings == [fail("ci.yml: installs a tool via `actions/setup-python`; the toolchain is uv + pnpm")]
 
 
+@pytest.mark.parametrize(
+    "identity", ["taiki-e/install-action", "someorg/action-setup"], ids=["install-action", "action-setup"]
+)
 def test_4_1_2_flags_a_github_action_recognized_by_the_install_action_naming_convention(
-    run_workflow_tooling: RunWorkflowTooling, fail: MakeFinding
+    run_workflow_tooling: RunWorkflowTooling, identity: str, fail: MakeFinding
 ) -> None:
-    wf = "jobs:\n  ci:\n    steps:\n      - uses: taiki-e/install-action@just\n"
+    wf = f"jobs:\n  ci:\n    steps:\n      - uses: {identity}@v1\n"
 
     result = run_workflow_tooling({"ci.yml": wf})
 
-    assert result.findings == [fail("ci.yml: installs a tool via `taiki-e/install-action`; the toolchain is uv + bun")]
+    assert result.findings == [fail(f"ci.yml: installs a tool via `{identity}`; the toolchain is uv + pnpm")]
 
 
 def test_4_1_3_flags_a_shell_command_that_installs_a_tool(

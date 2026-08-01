@@ -1,7 +1,7 @@
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 export type ReactRenderer = 'dom' | 'ink' | 'opentui' | 'r3f' | 'react-pdf';
 

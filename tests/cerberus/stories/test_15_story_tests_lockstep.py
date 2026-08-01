@@ -33,8 +33,8 @@ _PY_UV_WORKSPACE_SERVICES = '[tool.uv.workspace]\nmembers = ["services/*"]\n'
 
 _TS_PLAIN_PKG = '{"name": "widget"}'
 _TS_BIN_PKG = '{"name": "widget", "bin": {"widget": "./src/index.ts"}}'
-_TS_BUN_WORKSPACE_APPS = '{"workspaces": ["apps/*"]}'
-_TS_BUN_WORKSPACE_WITH_TESTS_MEMBER = '{"workspaces": ["apps/*", "tests"]}'
+_TS_WORKSPACE_APPS = {"package.json": "{}", "pnpm-workspace.yaml": "packages:\n  - apps/*\n"}
+_TS_WORKSPACE_WITH_TESTS_MEMBER = {"package.json": "{}", "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tests\n"}
 
 OK_MESSAGE = "every story criterion has a matching, title-matched test"
 NO_MATCHING_TEST_HEADER_MESSAGE = "tests/stories: story-doc ### header(s) with no matching test: 1.1.2"
@@ -82,7 +82,7 @@ def test_15_1_4_excludes_the_top_level_tests_directory_from_being_treated_as_a_p
     run_check_with_files: RunCheckWithFiles, skip: MakeFinding
 ) -> None:
     files = {
-        "package.json": _TS_BUN_WORKSPACE_WITH_TESTS_MEMBER,
+        **_TS_WORKSPACE_WITH_TESTS_MEMBER,
         "tests/package.json": '{"name": "test-harness"}',
         "tests/some.test.ts": "test('does nothing special', () => {});\n",
     }
@@ -94,7 +94,8 @@ def test_15_1_5_treats_a_nested_tests_directory_as_excluded_but_still_checks_its
     run_check_with_files: RunCheckWithFiles, fail: MakeFinding
 ) -> None:
     files = {
-        "package.json": '{"workspaces": ["apps/*", "tests/*"]}',
+        "package.json": "{}",
+        "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tests/*\n",
         "apps/cz/package.json": _TS_BIN_PKG,
         "tests/cz/package.json": '{"name": "test-harness-cz"}',
     }
@@ -102,15 +103,15 @@ def test_15_1_5_treats_a_nested_tests_directory_as_excluded_but_still_checks_its
     assert result.findings == [fail(_needs_story_tests_message("apps/cz"))]
 
 
-def test_15_1_6_recognizes_a_workspaces_object_with_a_packages_list(
+def test_15_1_6_treats_a_pnpm_workspace_manifest_without_a_packages_list_as_a_single_root_package(
     run_check_with_files: RunCheckWithFiles, fail: MakeFinding
 ) -> None:
     files = {
-        "package.json": '{"workspaces": {"packages": ["apps/*"]}}',
-        "apps/widget/package.json": _TS_BIN_PKG,
+        "package.json": _TS_BIN_PKG,
+        "pnpm-workspace.yaml": "catalog:\n  eslint: 9.0.0\n",
     }
     result = run_check_with_files(TS_CHECK_ID, files)
-    assert result.findings == [fail(_needs_story_tests_message("apps/widget"))]
+    assert result.findings == [fail(NEEDS_STORY_TESTS_MESSAGE)]
 
 
 def test_15_2_1_fails_a_python_package_that_exposes_a_cli_script_but_has_no_story_tests(
@@ -174,7 +175,7 @@ def test_15_3_2_passes_a_typescript_workspace_member_with_colocated_story_tests(
     run_check_with_files: RunCheckWithFiles, ok: MakeFinding
 ) -> None:
     files = {
-        "package.json": _TS_BUN_WORKSPACE_APPS,
+        **_TS_WORKSPACE_APPS,
         "apps/widget/package.json": _TS_BIN_PKG,
         "apps/widget/tests/stories/1-widget.md": _linked("1-widget.test.ts"),
         "apps/widget/tests/stories/1-widget.test.ts": TS_TEST,
@@ -198,7 +199,7 @@ def test_15_3_2_passes_a_typescript_workspace_member_with_colocated_story_tests(
         (
             TS_CHECK_ID,
             {
-                "package.json": _TS_BUN_WORKSPACE_APPS,
+                **_TS_WORKSPACE_APPS,
                 "apps/widget/package.json": _TS_BIN_PKG,
                 "tests/widget/stories/1-widget.md": _linked("1-widget.test.ts"),
                 "tests/widget/stories/1-widget.test.ts": TS_TEST,
@@ -466,7 +467,7 @@ def test_15_7_1_scopes_each_check_to_only_its_own_language_packages_in_a_mixed_r
     run_check_with_files: RunCheckWithFiles, ok: MakeFinding, fail: MakeFinding
 ) -> None:
     files = {
-        "package.json": _TS_BUN_WORKSPACE_APPS,
+        **_TS_WORKSPACE_APPS,
         "pyproject.toml": _PY_UV_WORKSPACE_SERVICES,
         "apps/widget/package.json": _TS_BIN_PKG,
         "apps/widget/tests/stories/1-widget.md": _linked("1-widget.test.ts"),

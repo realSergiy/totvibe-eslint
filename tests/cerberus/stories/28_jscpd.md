@@ -8,7 +8,7 @@
 
 ### 28.1.3 fails with the exit code when jscpd itself exits non zero
 
-### 28.1.4 errors when bunx is not on PATH
+### 28.1.4 errors when pnpx is not on PATH
 
 ### 28.1.5 errors when jscpd writes no readable json report
 
@@ -36,7 +36,7 @@
 
 ### 28.4.2 falls back to the repo root when no manifest declares workspaces
 
-### 28.4.3 errors when package.json is not valid JSON instead of crashing
+### 28.4.3 errors when the pnpm workspace manifest is not valid YAML instead of crashing
 
 ### 28.4.4 errors when pyproject.toml is not valid TOML instead of crashing
 
@@ -50,6 +50,6 @@ A passing run can still hide clones sitting under the threshold; in verbose mode
 
 ## 28.6 running jscpd at the version pinned in cerberus source
 
-A bare `bunx jscpd` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — measures with the same tool.
+A bare `pnpx jscpd` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — measures with the same tool.
 
 ### 28.6.1 invokes jscpd at the pinned version

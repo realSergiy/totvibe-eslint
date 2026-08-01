@@ -1,4 +1,5 @@
 import { $, ensure } from '@zyplux/util';
+import { run } from '@zyplux/util/exec';
 
 import type { InferValue } from '#optique';
 
@@ -20,12 +21,21 @@ export const publishTaggedTargetCommand = command(
 
 type PublishTaggedTargetConfig = InferValue<typeof publishTaggedTargetCommand>;
 
-export const publishNpm = async (dir: string) => {
-  await $`cd ${dir} && bun pm pack && bunx npm@11 publish ./*.tgz --access public`;
+const npmTarballName = (label: string, version: string) =>
+  `${label.replace(/^@/, '').replace('/', '-')}-${version}.tgz`;
+
+export const publishNpm = async (dir: string, label: string, version: string) => {
+  await $`pnpm pack`.cwd(dir);
+  await $`npm publish ${npmTarballName(label, version)} --access public`.cwd(dir);
 };
 
 const publishPypi = async (label: string) => {
-  await $`uv build --package ${label} && uv publish`;
+  await $`uv build --package ${label}`;
+  await $`uv publish`;
+};
+
+const podmanLogin = async (actor: string, token: string) => {
+  await run(['podman', 'login', 'ghcr.io', '-u', actor, '--password-stdin'], { stdin: token });
 };
 
 const publishGhcr = async (label: string, dir: string, version: string) => {
@@ -36,7 +46,7 @@ const publishGhcr = async (label: string, dir: string, version: string) => {
 
   const versioned = `${label}:${version}`;
   const latest = `${label}:latest`;
-  await $`podman login ghcr.io -u ${actor} --password-stdin < ${Buffer.from(token)}`;
+  await podmanLogin(actor, token);
   await $`podman build -t ${versioned} -t ${latest} ${dir}`;
   await $`podman push ${versioned}`;
   await $`podman push ${latest}`;
@@ -57,7 +67,7 @@ export const runPublishTaggedTarget = async ({ tag }: PublishTaggedTargetConfig)
       break;
     }
     case 'npm': {
-      await publishNpm(target.dir);
+      await publishNpm(target.dir, target.label, version);
       break;
     }
     case 'pypi': {

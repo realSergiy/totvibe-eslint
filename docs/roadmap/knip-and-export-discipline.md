@@ -91,7 +91,7 @@ plugin source and empirically against each repo, entry overrides stripped):
   package exports only `.`, full stop. CSS/asset entries (e.g. `./theme.css`)
   stay exempt as a technical necessity — `index.ts` cannot re-export a
   stylesheet — not a policy carve-out.
-- TypeScript's own module resolution (bundler mode, root-only exports map, no
+- TypeScript's own module resolution (nodenext mode, root-only exports map, no
   `paths` escape hatch anywhere in the org) already rejects deep cross-package
   imports at compile time once a package is root-only — confirmed empirically
   via `ts.resolveModuleName`. So Rule 2 needs **no new eslint rule and no new

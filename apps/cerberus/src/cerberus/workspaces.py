@@ -1,29 +1,29 @@
-"""Workspace membership from the repo's own manifests — bun `workspaces`
-globs in package.json and uv `[tool.uv.workspace] members` in pyproject.toml —
-for checks that scope an analysis to workspace-registered code. Manifest
-decode errors propagate so each check can report them as its own targeted
-finding.
+"""Workspace membership from the repo's own manifests — pnpm workspace globs
+(pnpm-workspace.yaml `packages`) and uv `[tool.uv.workspace] members` in
+pyproject.toml — for checks that scope an analysis to workspace-registered
+code. Manifest decode errors propagate so each check can report them as its
+own targeted finding.
 """
 
 from __future__ import annotations
 
-import json
 import tomllib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import yaml
 
 if TYPE_CHECKING:
     from cerberus.context import Context
     from cerberus.model import Repo
 
 
-def bun_member_globs(repo: Repo, ctx: Context) -> list[str]:
-    package_json = ctx.file(repo, "package.json")
-    if package_json is None:
+def ts_member_globs(repo: Repo, ctx: Context) -> list[str]:
+    manifest = ctx.file(repo, "pnpm-workspace.yaml")
+    if manifest is None:
         return []
-    registered = json.loads(package_json).get("workspaces", [])
-    if isinstance(registered, dict):
-        registered = registered.get("packages", [])
-    return list(registered)
+    data = yaml.safe_load(manifest)
+    packages: list[Any] = data.get("packages", []) if isinstance(data, dict) else []
+    return [glob for glob in packages if isinstance(glob, str)] if isinstance(packages, list) else []
 
 
 def uv_member_globs(repo: Repo, ctx: Context) -> list[str]:

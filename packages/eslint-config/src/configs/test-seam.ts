@@ -1,6 +1,6 @@
 import { plugin } from '#plugin';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 export const testSeamRules: ConfigWithExtends = {
   files: ['**/stories/*.test.{ts,tsx}'],

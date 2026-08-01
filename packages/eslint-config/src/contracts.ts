@@ -23,6 +23,8 @@ export type PrintedConfig = z.infer<typeof PrintedConfigSchema>;
 const WorkspaceDirsSchema = z.array(z.string());
 const WorkspacePackagesSchema = z.object({ packages: WorkspaceDirsSchema.optional() });
 
+export const PnpmWorkspaceSchema = z.looseObject({ packages: WorkspaceDirsSchema.optional() });
+
 export const WorkspaceManifestSchema = z.looseObject({
   name: z.string().optional(),
   workspaces: z.union([WorkspaceDirsSchema, WorkspacePackagesSchema]).optional(),

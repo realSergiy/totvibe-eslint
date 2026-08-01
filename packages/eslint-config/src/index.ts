@@ -1,21 +1,21 @@
 import prettier from 'eslint-config-prettier';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
-import { base } from './configs/base';
-import { fixtureRoleConfigs } from './configs/fixture-roles';
-import { gitignore } from './configs/gitignore';
-import { perfectionistConfig } from './configs/perfectionist';
-import { reactPresets, type RendererGlobs } from './configs/react';
-import { contractsRules, schemaBoundaryRules } from './configs/schema-boundary';
-import { tanstackRoutes } from './configs/tanstack';
-import { testSeamRules } from './configs/test-seam';
-import { typescript } from './configs/typescript';
-import { unicornConfig } from './configs/unicorn';
-import { vitestConfig } from './configs/vitest';
-import { zypluxRules } from './configs/zyplux';
+import { base } from './configs/base.ts';
+import { fixtureRoleConfigs } from './configs/fixture-roles.ts';
+import { gitignore } from './configs/gitignore.ts';
+import { perfectionistConfig } from './configs/perfectionist.ts';
+import { reactPresets, type RendererGlobs } from './configs/react.ts';
+import { contractsRules, schemaBoundaryRules } from './configs/schema-boundary.ts';
+import { tanstackRoutes } from './configs/tanstack.ts';
+import { testSeamRules } from './configs/test-seam.ts';
+import { typescript } from './configs/typescript.ts';
+import { unicornConfig } from './configs/unicorn.ts';
+import { testHarnessMocksConfig, vitestConfig } from './configs/vitest.ts';
+import { zypluxRules } from './configs/zyplux.ts';
 
-export type { ReactRenderer, RendererGlobs } from './configs/react';
-export { plugin } from './plugin';
+export type { ReactRenderer, RendererGlobs } from './configs/react.ts';
+export { plugin } from './plugin.ts';
 
 const defaultIgnores = [
   '**/.output',
@@ -80,6 +80,7 @@ const create = (options: ZypluxOptions = {}) => {
     testSeamRules,
     ...fixtureRoleConfigs(tsconfigRootDir),
     vitestConfig,
+    testHarnessMocksConfig,
     prettier,
   );
 };

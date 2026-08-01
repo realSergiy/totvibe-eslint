@@ -104,11 +104,11 @@ def write_if_changed(path: Path, content: bytes | str, mode: int = 0o644, note: 
 
 
 def bootstrap_bin_dirs() -> tuple[Path, ...]:
-    """Dirs rustup/bun/uv install into before PATH, resolved from $HOME, following become_user in a forked child."""
+    """Dirs rustup/pnpm/uv install into before PATH, resolved from $HOME, following become_user in a forked child."""
     home = Path.home()
     return (
         home / ".cargo/bin",
-        home / ".bun/bin",
+        home / ".local/share/pnpm",
         home / ".local/bin",
         home / ".claude/local",
     )

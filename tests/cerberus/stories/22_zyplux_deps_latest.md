@@ -6,7 +6,7 @@ PyPI distributions named `zyplux-*`, and container images under
 release, or fixes never propagate. The `zyplux_deps_latest` bite
 (`apps/cerberus/src/cerberus/checks/zyplux_latest_check.py`) detects usages by
 namespace (never a hardcoded list, so future packages are auto-covered), reads
-resolved and pinned versions — `bun.lock`, `uv.lock`, `==` pins in the
+resolved and pinned versions — `pnpm-lock.yaml`, `uv.lock`, `==` pins in the
 justfile and workflows, image tags in workflows and the justfile — and
 compares each against the registry's latest via the `registries` module
 (`apps/cerberus/src/cerberus/registries.py`). There is no `--fix`: bumping is
@@ -25,7 +25,7 @@ lookup.
 
 ### 22.1.2 ignores workspace local zyplux packages
 
-`workspace:*` entries in `bun.lock` and editable/virtual sources in `uv.lock`
+workspace `link:` entries in `pnpm-lock.yaml` and editable/virtual sources in `uv.lock`
 are the repo's own workspace members, not published consumption — they are
 never compared and never queried.
 
@@ -37,17 +37,17 @@ concurrently off a shared result map.
 
 ## 22.2 keeping npm packages at the latest release
 
-Resolved versions in `bun.lock` are the consumption truth for the JS
+Resolved versions in `pnpm-lock.yaml` are the consumption truth for the JS
 workspace.
 
 ### 22.2.1 passes when the locked npm version is the latest
 
-A `bun.lock` that resolves an `@zyplux/` package to exactly the registry's
+A `pnpm-lock.yaml` that resolves an `@zyplux/` package to exactly the registry's
 `dist-tags.latest` produces no finding.
 
 ### 22.2.2 fails naming the package versions and location when the lock lags
 
-When `bun.lock` resolves an `@zyplux/` package below `dist-tags.latest`, the
+When `pnpm-lock.yaml` resolves an `@zyplux/` package below `dist-tags.latest`, the
 check fails naming the package, the used and latest versions, the file it was
 found in, and points at `just upgrade`.
 

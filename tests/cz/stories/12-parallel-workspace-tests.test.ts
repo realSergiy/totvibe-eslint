@@ -24,7 +24,7 @@ describe('12.1 running both workspaces in parallel', () => {
     tempDir,
   }) => {
     await writeBothWorkspaces(tempDir);
-    shell.on('bun run test', 'JS: 12 passed');
+    shell.on('pnpm run test', 'JS: 12 passed');
     shell.on('uv run pytest', 'PY: 34 passed');
 
     await cz.run('test');
@@ -34,7 +34,7 @@ describe('12.1 running both workspaces in parallel', () => {
 
   test('12.1.2 fails when the JS tests fail, still printing both logs', async ({ cz, logs, shell, tempDir }) => {
     await writeBothWorkspaces(tempDir);
-    shell.on('bun run test', { exitCode: 1, stdout: 'JS: 1 failed' });
+    shell.on('pnpm run test', { exitCode: 1, stdout: 'JS: 1 failed' });
     shell.on('uv run pytest', 'PY: 34 passed');
 
     await expect(cz.run('test')).rejects.toThrow('tests failed: JS');
@@ -44,7 +44,7 @@ describe('12.1 running both workspaces in parallel', () => {
 
   test('12.1.3 fails when the Python tests fail', async ({ cz, shell, tempDir }) => {
     await writeBothWorkspaces(tempDir);
-    shell.on('bun run test', 'JS: 12 passed');
+    shell.on('pnpm run test', 'JS: 12 passed');
     shell.on('uv run pytest', { exitCode: 1, stdout: 'PY: 1 failed' });
 
     await expect(cz.run('test')).rejects.toThrow('tests failed: Python');
@@ -52,7 +52,7 @@ describe('12.1 running both workspaces in parallel', () => {
 
   test('12.1.4 passes when pytest collects no tests', async ({ cz, shell, tempDir }) => {
     await writeBothWorkspaces(tempDir);
-    shell.on('bun run test', 'JS: 12 passed');
+    shell.on('pnpm run test', 'JS: 12 passed');
     shell.on('uv run pytest', { exitCode: 5, stdout: 'PY: no tests ran' });
 
     await cz.run('test');
@@ -73,23 +73,23 @@ describe('manifest', () => {
 });
 `,
     );
-    shell.on('bun run test', 'JS: 2 passed');
+    shell.on('pnpm run test', 'JS: 2 passed');
     shell.on('uv run pytest', 'PY: 3 passed');
 
     await cz.run('test', 'parses the manifest');
 
-    const [command] = shell.commandsMatching('bun run test');
+    const [command] = shell.commandsMatching('pnpm run test');
     expect(command).toContain('stories/42-manifest.test.ts');
     expect(command).toContain('-t parses the manifest');
     expect(command).toContain('--passWithNoTests --coverage.enabled=false --reporter=tree --hideSkippedTests');
     expect(shell.commandsMatching('uv run pytest')).toEqual([
-      'uv run pytest --color=yes --no-cov -v -k parses and the and manifest 2>&1',
+      'uv run pytest --color=yes --no-cov -v -k parses and the and manifest',
     ]);
   });
 
   test('12.2.2 passes when the filter matches nothing in either workspace', async ({ cz, shell, tempDir }) => {
     await writeBothWorkspaces(tempDir);
-    shell.on('bun run test', 'JS: no tests found');
+    shell.on('pnpm run test', 'JS: no tests found');
     shell.on('uv run pytest', { exitCode: 5, stdout: 'PY: no tests ran' });
 
     await cz.run('test', 'nomatchxyz');
@@ -108,11 +108,11 @@ describe('manifest', () => {
 describe('12.3 workspace detection', () => {
   test('12.3.1 runs only vitest when only package.json is present', async ({ cz, shell, tempDir }) => {
     await writeJsWorkspace(tempDir);
-    shell.on('bun run test', 'JS: 12 passed');
+    shell.on('pnpm run test', 'JS: 12 passed');
 
     await cz.run('test');
 
-    expect(shell.commands).toEqual(['bun run test 2>&1']);
+    expect(shell.commands).toEqual(['pnpm run test']);
   });
 
   test('12.3.2 runs only pytest when only pyproject.toml is present', async ({ cz, shell, tempDir }) => {
@@ -121,7 +121,7 @@ describe('12.3 workspace detection', () => {
 
     await cz.run('test');
 
-    expect(shell.commands).toEqual(['uv run pytest --color=yes 2>&1']);
+    expect(shell.commands).toEqual(['uv run pytest --color=yes']);
   });
 
   test('12.3.3 fails when neither workspace manifest is present', async ({ cz }) => {
@@ -132,7 +132,7 @@ describe('12.3 workspace detection', () => {
 describe('12.4 keeping the JS runner colored despite AI-agent auto-detection', () => {
   test('12.4.1 clears the env vars vitest uses to auto-disable color', async ({ cz, shell, tempDir }) => {
     await writeJsWorkspace(tempDir);
-    shell.on('bun run test', 'JS: 12 passed');
+    shell.on('pnpm run test', 'JS: 12 passed');
 
     await cz.run('test');
 

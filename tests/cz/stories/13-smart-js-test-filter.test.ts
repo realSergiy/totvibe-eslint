@@ -64,17 +64,17 @@ describe('13.1 resolving a filter against real test files before running', () =>
   test.for(resolutionCases)('13.1.%s', async ([, files, filter, matchedFiles, scopeToName], { cz, shell, tempDir }) => {
     await tempDir.write('package.json', '{"scripts":{"test":"vitest run"}}');
     for (const [path, content] of Object.entries(files)) await tempDir.write(path, content);
-    shell.on('bun run test', 'JS: ok');
+    shell.on('pnpm run test', 'JS: ok');
 
     await cz.run('test', filter);
 
-    const [command] = shell.commandsMatching('bun run test');
+    const [command] = shell.commandsMatching('pnpm run test');
     if (matchedFiles.length > 0) {
       for (const file of matchedFiles) expect(command).toContain(file);
       if (scopeToName) expect(command).toContain(`-t ${filter}`);
       else expect(command).not.toContain('-t ');
     } else {
-      expect(shell.commandsMatching('bun run test')).toEqual([]);
+      expect(shell.commandsMatching('pnpm run test')).toEqual([]);
     }
   });
 });
@@ -108,11 +108,11 @@ describe('beta section', () => {
 });
 `,
     );
-    shell.on('bun run test', 'JS: ok');
+    shell.on('pnpm run test', 'JS: ok');
 
     await cz.run('test', 'alpha-thing|special-note');
 
-    const [command] = shell.commandsMatching('bun run test');
+    const [command] = shell.commandsMatching('pnpm run test');
     expect(command).toContain('stories/alpha-thing.test.ts');
     expect(command).toContain('stories/beta-other.test.ts');
     expect(command).not.toContain('-t ');

@@ -221,7 +221,7 @@ def _render_lint(repo: Repo, results: list[CheckResult]) -> None:
         else:
             for finding in result.problems:
                 headline, _, rest = finding.message.partition("\n")
-                console.print(f"  {_GLYPH[finding.status]} {result.check}: {headline}{detail}")
+                console.print(f"error: {_GLYPH[finding.status]} {result.check}: {headline}{detail}")
                 if rest:
                     console.print(rest)
         for line in result.verbose_lines:
@@ -230,4 +230,4 @@ def _render_lint(repo: Repo, results: list[CheckResult]) -> None:
     if not problems:
         console.print("  [green]🐾 all bites pass[/green]")
     else:
-        console.print(f"\n[bold]💢 {len(problems)} problems[/bold]")
+        console.print(f"\n[bold]error: 💢 {len(problems)} problems[/bold]")

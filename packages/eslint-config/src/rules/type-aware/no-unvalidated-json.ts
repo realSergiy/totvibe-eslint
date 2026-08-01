@@ -61,7 +61,7 @@ export const noUnvalidatedJson = createRule({
   meta: {
     docs: {
       description:
-        'Disallow consuming a deserialization boundary — `JSON.parse(…)` or a `.json()` call whose result is `any`/`Promise<any>` (a `Response`/`Bun.file` read) — without a zod schema. `JSON.parse` is matched syntactically (its signature always yields `any`); `.json()` is matched by type, so a domain `.json()` that already returns a typed value is left alone, while one returning `any`/`Promise<any>` is flagged whether or not it is awaited. The boundary value must flow directly (optionally through `await`) into a schema `.parse()`/`.safeParse()` — `Schema.parse(JSON.parse(text))`, `Schema.parse(await response.json())` — or through a helper that does, so the boundary returns a typed, runtime-checked value instead of an `as` cast or a hand-rolled `typeof`/`in` guard.',
+        'Disallow consuming a deserialization boundary — `JSON.parse(…)` or a `.json()` call whose result is `any`/`Promise<any>` (a `Response`/`fs.readFileSync` read) — without a zod schema. `JSON.parse` is matched syntactically (its signature always yields `any`); `.json()` is matched by type, so a domain `.json()` that already returns a typed value is left alone, while one returning `any`/`Promise<any>` is flagged whether or not it is awaited. The boundary value must flow directly (optionally through `await`) into a schema `.parse()`/`.safeParse()` — `Schema.parse(JSON.parse(text))`, `Schema.parse(await response.json())` — or through a helper that does, so the boundary returns a typed, runtime-checked value instead of an `as` cast or a hand-rolled `typeof`/`in` guard.',
       requiresTypeChecking: true,
     },
     messages: {

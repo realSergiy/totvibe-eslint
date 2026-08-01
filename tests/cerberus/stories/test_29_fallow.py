@@ -85,7 +85,7 @@ def _serve_clean(fake_proc: FakeProc) -> None:
 
 def _argv(spec: str, analysis: str, repo_root: Path) -> list[str]:
     return [
-        "bunx",
+        "pnpx",
         spec,
         analysis,
         *_SHARED_FLAGS,
@@ -167,16 +167,16 @@ def test_29_2_3_fails_with_the_issue_count_when_fallow_dead_code_reports_issues(
     fake_proc.serve_report_file("fallow health", _CLEAN_HEALTH)
     result = run_check_with_files(CHECK_ID, {"package.json": _PACKAGE_JSON})
     assert result.findings == [
-        fail(f"fallow found 3 dead-code issues; run `bunx {npm_tool_spec('fallow')} dead-code` locally for details")
+        fail(f"fallow found 3 dead-code issues; run `pnpx {npm_tool_spec('fallow')} dead-code` locally for details")
     ]
 
 
-def test_29_2_4_errors_when_bunx_is_not_on_path(
+def test_29_2_4_errors_when_pnpx_is_not_on_path(
     run_check_with_files: RunCheckWithFiles, fake_proc: FakeProc, error: MakeFinding
 ) -> None:
-    fake_proc.serve_missing("bunx")
+    fake_proc.serve_missing("pnpx")
     result = run_check_with_files(CHECK_ID, {"package.json": _PACKAGE_JSON})
-    assert result.findings == [error("`bunx` not found on PATH")]
+    assert result.findings == [error("`pnpx` not found on PATH")]
 
 
 def test_29_3_1_fails_listing_each_function_fallow_health_flags_above_its_thresholds(
@@ -239,7 +239,7 @@ def test_29_3_3_falls_back_to_the_rerun_hint_only_when_fallow_crashes_without_wr
     fake_proc.serve("fallow health", returncode=2, stderr="fallow: internal error")
     result = run_check_with_files(CHECK_ID, {"package.json": _PACKAGE_JSON})
     assert result.findings == [
-        fail(f"fallow health exited 2; run `bunx {npm_tool_spec('fallow')} health` locally for details")
+        fail(f"fallow health exited 2; run `pnpx {npm_tool_spec('fallow')} health` locally for details")
     ]
 
 
@@ -271,19 +271,24 @@ def test_29_5_1_shields_fallow_behind_a_cerberus_owned_config_ignoring_workspace
     (repo_root / "apps" / "web" / "package.json").write_text('{"name": "web"}')
     (repo_root / "tests" / "py").mkdir(parents=True)
 
-    run_fallow({"package.json": json.dumps({"name": "demo", "workspaces": ["apps/*", "tests/*"]})})
+    run_fallow(
+        {
+            "package.json": json.dumps({"name": "demo"}),
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tests/*\n",
+        }
+    )
 
     expected_config = {"ignorePatterns": ["apps/py", "tests/py"], "duplicates": {"ignoreDefaults": False}}
     assert [json.loads(snapshot) for snapshot in fake_proc.config_snapshots] == [expected_config, expected_config]
     assert all(not cwd.is_relative_to(repo_root) for _, cwd in fake_proc.calls if cwd is not None)
 
 
-def test_29_5_2_errors_when_package_json_is_not_valid_json_instead_of_crashing(
+def test_29_5_2_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
     run_fallow: RunFallow, fake_proc: FakeProc, status: type[Status]
 ) -> None:
-    result = run_fallow({"package.json": "{not json"})
+    result = run_fallow({"package.json": _PACKAGE_JSON, "pnpm-workspace.yaml": "packages: ["})
     assert result.findings[0].status == status.ERROR
-    assert result.findings[0].message.startswith("package.json is not valid JSON:")
+    assert result.findings[0].message.startswith("pnpm-workspace.yaml is not valid YAML:")
     assert fake_proc.calls == []
 
 
@@ -333,7 +338,7 @@ def test_29_6_2_keeps_the_count_and_rerun_hint_failure_without_verbose(
 ) -> None:
     result = _run_dead_code_with_issues(run_fallow, fake_proc, verbose=False)
     assert result.findings == [
-        fail(f"fallow found 2 dead-code issues; run `bunx {npm_tool_spec('fallow')} dead-code` locally for details")
+        fail(f"fallow found 2 dead-code issues; run `pnpx {npm_tool_spec('fallow')} dead-code` locally for details")
     ]
 
 
@@ -499,7 +504,7 @@ def test_29_8_5_never_persists_a_dead_code_report_without_verbose_even_past_the_
     assert result.findings == [
         fail(
             f"fallow found {issue_count} dead-code issues;"
-            f" run `bunx {npm_tool_spec('fallow')} dead-code` locally for details"
+            f" run `pnpx {npm_tool_spec('fallow')} dead-code` locally for details"
         )
     ]
     assert not (repo_root / ".reports").exists()

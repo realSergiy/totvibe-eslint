@@ -70,12 +70,12 @@ const toPytestKeywordExpr = (name: string) => {
 const RUNNERS: Runner[] = [
   {
     argv: async name => {
-      if (name === undefined) return ['bun', 'run', 'test'];
+      if (name === undefined) return ['pnpm', 'run', 'test'];
       const { moduleIds, scopeToName } = await resolveJsFilters(name);
       if (moduleIds.length === 0) return [];
       const selectors = scopeToName ? [...moduleIds, '-t', name] : moduleIds;
       return [
-        'bun',
+        'pnpm',
         'run',
         'test',
         ...selectors,
@@ -110,7 +110,7 @@ const nameArgument = argument(string({ metavar: 'NAME' }), {
 const testParser = merge(object({ command: constant('test' as const) }), object({ name: optional(nameArgument) }));
 
 export const testCommand = command('test', testParser, {
-  brief: message`Run JS (bun run test) and Python (uv run pytest) workspace tests in parallel, printing each buffered log once both finish.`,
+  brief: message`Run JS (pnpm run test) and Python (uv run pytest) workspace tests in parallel, printing each buffered log once both finish.`,
 });
 
 type TestConfig = InferValue<typeof testCommand>;

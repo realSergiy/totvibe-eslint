@@ -17,16 +17,15 @@
 | [totchef](apps/totchef)                          | PyPI     | 🧑‍🍳 Declarative machine setup: write a recipe, run one command                    |
 | [@zyplux/eslint-config](packages/eslint-config)  | npm      | Shared ESLint flat config and custom rules                                       |
 | [@zyplux/tsconfig](packages/tsconfig)            | npm      | Shared TypeScript presets                                                        |
-| [@zyplux/util](packages/util-ts)                 | npm      | Bun utilities: assertions, polling, zod-validated parsing, git/gh shell harness  |
+| [@zyplux/util](packages/util-ts)                 | npm      | Node utilities: assertions, polling, zod-validated parsing, git/gh shell harness |
 | [zyplux-util](packages/util_py)                  | PyPI     | Python counterpart of the shared utilities                                       |
 | [@zyplux/tests-fixtures](tests/fixtures)         | npm      | Test doubles (shell fake, CLI runner) for story tests                            |
-| [ghcr.io/zyplux/ci](containers/ci)               | GHCR     | CI image the org's workflows run on                                              |
 
 Each package's README covers usage. Releases are cut per package from [release-targets.toml](release-targets.toml) via `cz release-bumped-targets`.
 
 ## Develop
 
-Dual workspace: bun (TS) + uv (Python), orchestrated by [just](https://github.com/casey/just).
+Dual workspace: pnpm (TS) + uv (Python), orchestrated by [just](https://github.com/casey/just).
 
 ```sh
 just install   # both workspaces

@@ -12,7 +12,7 @@
 
 ### 29.2.3 fails with the issue count when fallow dead-code reports issues
 
-### 29.2.4 errors when bunx is not on PATH
+### 29.2.4 errors when pnpx is not on PATH
 
 ## 29.3 enforcing fallow's complexity thresholds
 
@@ -20,7 +20,7 @@
 
 ### 29.3.2 fails listing only the metrics fallow reported when coverage data is absent
 
-Each analysis writes its report to a file via fallow's own `--output-file` rather than being read off stdout: relaying a large JSON report through the `bunx` -> fallow subprocess pipe chain has been observed to truncate silently at a pipe-buffer-sized boundary on real-world repos, and a truncated report is unparseable JSON — indistinguishable, without this fix, from a genuine fallow crash. The rerun-hint fallback stays reserved for that genuine-crash case: a fallow exit with no readable report on disk at all.
+Each analysis writes its report to a file via fallow's own `--output-file` rather than being read off stdout: relaying a large JSON report through the `pnpx` -> fallow subprocess pipe chain has been observed to truncate silently at a pipe-buffer-sized boundary on real-world repos, and a truncated report is unparseable JSON — indistinguishable, without this fix, from a genuine fallow crash. The rerun-hint fallback stays reserved for that genuine-crash case: a fallow exit with no readable report on disk at all.
 
 ### 29.3.3 falls back to the rerun hint only when fallow crashes without writing a report
 
@@ -36,7 +36,7 @@ Tests are as load-bearing as production code, so the cerberus-owned config also 
 
 ### 29.5.1 shields fallow behind a cerberus-owned config ignoring workspace dirs without a package.json
 
-### 29.5.2 errors when package.json is not valid JSON instead of crashing
+### 29.5.2 errors when the pnpm workspace manifest is not valid YAML instead of crashing
 
 ### 29.5.3 switches off fallow's default duplicate ignores so test files count
 
@@ -54,7 +54,7 @@ Fallow's report envelope carries several sibling fields alongside the actual iss
 
 ## 29.7 running fallow at the version pinned in cerberus source
 
-A bare `bunx fallow` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — analyzes with the same tool.
+A bare `pnpx fallow` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — analyzes with the same tool.
 
 ### 29.7.1 invokes fallow at the pinned version
 

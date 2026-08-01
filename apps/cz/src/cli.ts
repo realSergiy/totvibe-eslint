@@ -1,15 +1,16 @@
-import { assertTagVersionCommand, runAssertTagVersion } from '#commands/assert-tag-version';
-import { bootstrapNpmTargetCommand, runBootstrapNpmTarget } from '#commands/bootstrap-npm-target';
-import { cleanCommand, runClean } from '#commands/clean';
-import { cloneReferenceRepoCommand, runCloneReferenceRepo } from '#commands/clone-reference-repo';
-import { depsCatalogCommand, runDepsCatalog } from '#commands/deps-catalog';
-import { printTagKindCommand, runPrintTagKind } from '#commands/print-tag-kind';
-import { publishTaggedTargetCommand, runPublishTaggedTarget } from '#commands/publish-tagged-target';
-import { pushBranchCommand, runPushBranch } from '#commands/push-branch';
-import { releaseBumpedTargetsCommand, runReleaseBumpedTargets } from '#commands/release-bumped-targets';
-import { runTest, testCommand } from '#commands/test';
-import { defineProgram, message, or, run } from '#optique';
 import pkg from '#package.json' with { type: 'json' };
+
+import { assertTagVersionCommand, runAssertTagVersion } from './commands/assert-tag-version.ts';
+import { bootstrapNpmTargetCommand, runBootstrapNpmTarget } from './commands/bootstrap-npm-target.ts';
+import { cleanCommand, runClean } from './commands/clean.ts';
+import { cloneReferenceRepoCommand, runCloneReferenceRepo } from './commands/clone-reference-repo.ts';
+import { depsCatalogCommand, runDepsCatalog } from './commands/deps-catalog.ts';
+import { printTagKindCommand, runPrintTagKind } from './commands/print-tag-kind.ts';
+import { publishTaggedTargetCommand, runPublishTaggedTarget } from './commands/publish-tagged-target.ts';
+import { pushBranchCommand, runPushBranch } from './commands/push-branch.ts';
+import { releaseBumpedTargetsCommand, runReleaseBumpedTargets } from './commands/release-bumped-targets.ts';
+import { runTest, testCommand } from './commands/test.ts';
+import { defineProgram, message, or, run } from './optique.ts';
 
 const VERSION = pkg.version;
 

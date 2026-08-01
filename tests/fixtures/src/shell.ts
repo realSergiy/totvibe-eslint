@@ -1,73 +1,55 @@
 import type { $ } from '@zyplux/util';
 
+import { run } from '@zyplux/util/exec';
 import { vi } from 'vitest';
 
-import { isPatternMatch } from './pattern-match';
+import { isPatternMatch } from './pattern-match.ts';
+
+vi.mock('@zyplux/util/exec', async importOriginal => {
+  const actual = await importOriginal<typeof import('@zyplux/util/exec')>();
+  return { ...actual, run: vi.fn(actual.run) };
+});
 
 type ShellOutput = Awaited<ReturnType<typeof $.git.status>>;
-type ShellPromise = ReturnType<typeof Bun.$>;
-type ShellValue = Parameters<typeof Bun.$>[1];
-
-const notImplemented = (method: string) => () => {
-  throw new Error(`fakeShellOutput.${method} is not implemented`);
-};
+type ShellPromise = ReturnType<typeof run>;
 
 export const fakeShellOutput = (stdout: string, exitCode = 0): ShellOutput => ({
-  arrayBuffer: notImplemented('arrayBuffer'),
-  blob: notImplemented('blob'),
-  bytes: notImplemented('bytes'),
   exitCode,
-  json: notImplemented('json'),
   stderr: Buffer.alloc(0),
   stdout: Buffer.from(stdout),
   text: () => stdout,
 });
 
-export const fakeShellPromise = (
-  result: ShellOutput,
-  onEnv?: (env: Record<string, string | undefined>) => void,
-): ShellPromise => {
+type ShellPromiseHooks = {
+  onCwd?: (dir: string) => void;
+  onEnv?: (env: Record<string, string | undefined>) => void;
+};
+
+export const fakeShellPromise = (result: ShellOutput, { onCwd, onEnv }: ShellPromiseHooks = {}): ShellPromise => {
   const chainMethod = () => promise;
   const promise: ShellPromise = Object.assign(Promise.resolve(result), {
-    arrayBuffer: notImplemented('arrayBuffer'),
-    blob: notImplemented('blob'),
-    cwd: chainMethod,
+    cwd: (dir?: string) => {
+      if (dir !== undefined) onCwd?.(dir);
+      return promise;
+    },
     env: (newEnv?: Record<string, string | undefined>) => {
       if (newEnv !== undefined) onEnv?.(newEnv);
       return promise;
     },
-    json: notImplemented('json'),
-    lines: notImplemented('lines'),
     nothrow: chainMethod,
     quiet: chainMethod,
-    stdin: new WritableStream(),
     text: (encoding?: BufferEncoding) => Promise.resolve(result.text(encoding)),
-    throws: chainMethod,
   }) satisfies ShellPromise;
   return promise;
 };
 
-export const toArgv = (values: ShellValue[]) => (Array.isArray(values[0]) ? values[0].map(String) : []);
-
-const renderValue = (value: ShellValue): string => {
-  if (Buffer.isBuffer(value)) return value.toString();
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) {
-    const items: ShellValue[] = value;
-    return items.map(item => renderValue(item)).join(' ');
-  }
-  throw new Error('unexpected shell expression in renderCommand');
+export type ShellCall = {
+  argv: string[];
+  cwd?: string;
+  env?: Record<string, string | undefined>;
+  program: string;
+  stdin?: string;
 };
-
-const renderCommand = (strings: TemplateStringsArray, values: ShellValue[]) =>
-  strings
-    .reduce((rendered, chunk, index) => {
-      const value = values[index];
-      return `${rendered}${chunk}${value === undefined ? '' : renderValue(value)}`;
-    }, '')
-    .trim();
-
-export type ShellCall = { argv: string[]; env?: Record<string, string | undefined>; program: string };
 export type ShellFake = {
   calls: ShellCall[];
   commands: string[];
@@ -110,30 +92,41 @@ export const createShellFake = (): ShellFake => {
     return takeReply(route);
   };
 
-  const shellFn = vi.fn<typeof Bun.$>();
-  shellFn.mockImplementation((strings, ...values) => {
-    const command = renderCommand(strings, values);
-    const call: ShellCall = { argv: toArgv(values), program: strings[0]?.trim().split(' ', 1)[0] ?? '' };
-    calls.push(call);
-    commands.push(command);
-    const reply = resolveReply(command);
-    const resolved = typeof reply === 'function' ? reply(command) : reply;
-    const output =
-      typeof resolved === 'string' ? fakeShellOutput(resolved) : fakeShellOutput(resolved.stdout, resolved.exitCode);
-    return fakeShellPromise(output, env => {
-      call.env = env;
-    });
-  });
-
   return {
     calls,
     commands,
     commandsMatching: pattern => commands.filter(command => isCommandMatch(command, pattern)),
     install: () => {
-      const original = Bun.$;
-      Bun.$ = shellFn;
+      const runMock = vi.mocked(run);
+      runMock.mockImplementation((argv, opts) => {
+        const command = argv.join(' ');
+        const [program = '', ...args] = argv;
+        const call: ShellCall = {
+          argv: args,
+          program,
+          ...(opts?.cwd !== undefined && { cwd: opts.cwd }),
+          ...(opts?.env !== undefined && { env: opts.env }),
+          ...(opts?.stdin !== undefined && { stdin: String(opts.stdin) }),
+        };
+        calls.push(call);
+        commands.push(command);
+        const reply = resolveReply(command);
+        const resolved = typeof reply === 'function' ? reply(command) : reply;
+        const output =
+          typeof resolved === 'string'
+            ? fakeShellOutput(resolved)
+            : fakeShellOutput(resolved.stdout, resolved.exitCode);
+        return fakeShellPromise(output, {
+          onCwd: dir => {
+            call.cwd = dir;
+          },
+          onEnv: env => {
+            call.env = env;
+          },
+        });
+      });
       return () => {
-        Bun.$ = original;
+        runMock.mockReset();
       };
     },
     on: (pattern, ...replies) => {

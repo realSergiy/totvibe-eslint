@@ -14,8 +14,8 @@ type FetchRoute = { match: RegExp | string; reply: FetchReply };
 const HTTP_NOT_FOUND = 404;
 const HTTP_OK = 200;
 
-export const notFoundResponse = () => new Response(undefined, { status: HTTP_NOT_FOUND });
-export const okResponse = () => new Response(undefined, { status: HTTP_OK });
+export const notFoundResponse = (): Response => new Response(undefined, { status: HTTP_NOT_FOUND });
+export const okResponse = (): Response => new Response(undefined, { status: HTTP_OK });
 
 const isUrlMatch = (url: string, match: RegExp | string) =>
   typeof match === 'string' ? url.startsWith(match) : match.test(url);
@@ -44,10 +44,9 @@ export const createFetchFake = (): FetchFake => {
 
   return {
     install: () => {
-      const original = globalThis.fetch;
-      vi.stubGlobal('fetch', Object.assign(fakeFetch, { preconnect: original.preconnect }));
+      vi.stubGlobal('fetch', fakeFetch);
       return () => {
-        vi.stubGlobal('fetch', original);
+        vi.unstubAllGlobals();
       };
     },
     on: (match, reply) => {

@@ -10,7 +10,7 @@
     "#fixtures": "./fixtures/index.ts"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "@zyplux/eslint-config": "workspace:*",
     "@zyplux/tests-fixtures": "workspace:*",
     "@zyplux/tsconfig": "workspace:*",

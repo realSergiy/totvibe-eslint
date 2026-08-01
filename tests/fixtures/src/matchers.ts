@@ -1,10 +1,10 @@
 import { isDeepStrictEqual } from 'node:util';
 import { expect } from 'vitest';
 
-import type { ConsoleCapture } from './console';
-import type { ShellFake } from './shell';
+import type { ConsoleCapture } from './console.ts';
+import type { ShellFake } from './shell.ts';
 
-import { isPatternMatch } from './pattern-match';
+import { isPatternMatch } from './pattern-match.ts';
 
 export type LineMatch = RegExp | string;
 
