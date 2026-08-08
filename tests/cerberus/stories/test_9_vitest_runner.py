@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from cerberus.context import Context
-    from cerberus.model import CheckResult
+    from cerberus.model import CheckResult, Repo
     from seam_fixtures import MakeFinding, RunCheckWithFiles
 
 type RunVitestRunner = Callable[..., CheckResult]
@@ -32,7 +32,10 @@ def run_vitest_runner(
     monkeypatch: pytest.MonkeyPatch, ctx: Context, run_check_with_files: RunCheckWithFiles
 ) -> RunVitestRunner:
     def _run(files: dict[str, str], workflows: dict[str, str] | None = None) -> CheckResult:
-        monkeypatch.setattr(ctx, "workflows", lambda _repo: workflows or {})
+        def read_workflows(_repo: Repo) -> dict[str, str]:
+            return workflows or {}
+
+        monkeypatch.setattr(ctx, "workflows", read_workflows)
         return run_check_with_files(CHECK_ID, files)
 
     return _run

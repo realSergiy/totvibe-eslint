@@ -21,6 +21,8 @@ from clipy.ctop import (
 from rich.console import Console
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     import pytest
     from typer.testing import CliRunner
 
@@ -71,6 +73,21 @@ class FakeProcess:
     @staticmethod
     def oneshot() -> object:
         return nullcontext()
+
+
+def stub_process_tree(
+    monkeypatch: pytest.MonkeyPatch, scanned: list[FakeProcess], by_pid: dict[int, FakeProcess]
+) -> None:
+    """Point psutil's two entry points at fakes: `process_iter` yields `scanned`, `Process` looks up `by_pid`."""
+
+    def process_iter(_attrs: list[str]) -> Iterator[FakeProcess]:
+        return iter(scanned)
+
+    def get_process(pid: int) -> FakeProcess:
+        return by_pid[pid]
+
+    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", process_iter)
+    monkeypatch.setattr(clipy.ctop.psutil, "Process", get_process)
 
 
 # 2.1 labeling a process by its role or owning extension
@@ -214,9 +231,7 @@ def test_2_5_1_finds_main_processes_by_excluding_ones_whose_own_parent_is_also_v
     shell = FakeProcess(pid=1, process_name="bash")
     main = FakeProcess(pid=100, process_name="code-insiders", ppid=1)
     renderer = FakeProcess(pid=101, process_name="code-insiders", ppid=100)
-    registry = {1: shell, 100: main, 101: renderer}
-    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", lambda _attrs: iter([shell, main, renderer]))
-    monkeypatch.setattr(clipy.ctop.psutil, "Process", lambda pid: registry[pid])
+    stub_process_tree(monkeypatch, [shell, main, renderer], {1: shell, 100: main, 101: renderer})
 
     mains = clipy.ctop.find_main_processes()
 
@@ -225,7 +240,7 @@ def test_2_5_1_finds_main_processes_by_excluding_ones_whose_own_parent_is_also_v
 
 def test_2_5_2_a_main_process_survives_a_failed_parent_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     main = FakeProcess(pid=100, process_name="code-insiders", ppid=1)
-    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", lambda _attrs: iter([main]))
+    stub_process_tree(monkeypatch, [main], {})
 
     def raise_no_such_process(pid: int) -> FakeProcess:
         raise psutil.NoSuchProcess(pid)
@@ -254,9 +269,7 @@ def test_2_5_3_sample_processes_labels_sorts_by_cpu_and_forgets_dead_pids(monkey
         rss_bytes=100,
         subtree=[child],
     )
-    registry = {1: shell, 100: main, 101: child}
-    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", lambda _attrs: iter([main]))
-    monkeypatch.setattr(clipy.ctop.psutil, "Process", lambda pid: registry[pid])
+    stub_process_tree(monkeypatch, [main], {1: shell, 100: main, 101: child})
     tracked = cast("dict[int, psutil.Process]", {999: FakeProcess(pid=999, process_name="ghost")})
 
     rows = clipy.ctop.sample_processes(tracked)
@@ -279,9 +292,7 @@ def test_2_5_4_a_process_that_dies_mid_sample_is_dropped_without_derailing_the_s
     )
     dying_child = RacyProcess(pid=202, process_name="code-insiders", ppid=200)
     main = FakeProcess(pid=200, process_name="code-insiders", ppid=1, subtree=[ok_child, dying_child])
-    registry = {1: FakeProcess(pid=1, process_name="bash"), 200: main}
-    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", lambda _attrs: iter([main, main]))
-    monkeypatch.setattr(clipy.ctop.psutil, "Process", lambda pid: registry[pid])
+    stub_process_tree(monkeypatch, [main, main], {1: FakeProcess(pid=1, process_name="bash"), 200: main})
 
     rows = clipy.ctop.sample_processes({})
 
@@ -295,9 +306,7 @@ def test_2_5_5_a_process_tree_that_vanishes_mid_scan_is_skipped(monkeypatch: pyt
             raise psutil.NoSuchProcess(self.pid)
 
     main = VanishingProcess(pid=300, process_name="code-insiders", ppid=1)
-    registry = {1: FakeProcess(pid=1, process_name="bash")}
-    monkeypatch.setattr(clipy.ctop.psutil, "process_iter", lambda _attrs: iter([main]))
-    monkeypatch.setattr(clipy.ctop.psutil, "Process", lambda pid: registry[pid])
+    stub_process_tree(monkeypatch, [main], {1: FakeProcess(pid=1, process_name="bash")})
 
     assert clipy.ctop.sample_processes({}) == []
 

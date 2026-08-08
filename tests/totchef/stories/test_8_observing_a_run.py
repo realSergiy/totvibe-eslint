@@ -283,7 +283,7 @@ def test_8_3_3_dry_run_shows_only_plan_on_terminal_but_logs_everything(
 ) -> None:
     """A dry run shows only the plan table on the terminal while still recording every line to the log file."""
     log_file = totchef.workdir / "run.log"
-    monkeypatch.setattr(log_internals.log_state, "log_handle", Path(log_file).open("a", encoding="utf-8"))  # noqa: SIM115 — the pump owns the handle for the run
+    monkeypatch.setattr(log_internals.log_state, "log_handle", Path(log_file).open("a", encoding="utf-8"))  # ruff: ignore[open-file-with-context-handler] — the pump owns the handle for the run
     monkeypatch.setattr(log_internals.log_state, "echo_to_terminal", True)
     emitted: list[str] = []
     monkeypatch.setattr(log_internals, "LINE_SINK", emitted.append)

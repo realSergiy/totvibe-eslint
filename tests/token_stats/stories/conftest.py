@@ -17,7 +17,10 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def _fake_tokenizer_backend(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(token_stats.tokenizers, "count_tiktoken_tokens", lambda _encoding_key, text: len(text.split()))
+    def count_words(_encoding_key: str, text: str) -> int:
+        return len(text.split())
+
+    monkeypatch.setattr(token_stats.tokenizers, "count_tiktoken_tokens", count_words)
 
 
 @pytest.fixture

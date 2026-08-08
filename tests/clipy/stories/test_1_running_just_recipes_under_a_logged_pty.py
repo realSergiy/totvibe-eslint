@@ -15,6 +15,7 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+    from typing import TextIO
 
     from typer.testing import CliRunner
 
@@ -163,7 +164,11 @@ def test_1_4_3_forwarded_signals_relay_to_the_childs_process_group(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     killed: list[tuple[int, int]] = []
-    monkeypatch.setattr(os, "killpg", lambda pgid, signum: killed.append((pgid, signum)))
+
+    def record_killpg(pgid: int, signum: int) -> None:
+        killed.append((pgid, signum))
+
+    monkeypatch.setattr(os, "killpg", record_killpg)
     fd = os.open(tmp_path / "not-a-tty", os.O_CREAT | os.O_WRONLY)
 
     try:
@@ -250,9 +255,19 @@ def test_1_6_1_copy_winsize_copies_the_real_terminal_size_when_stdout_is_a_tty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     recorded: list[tuple[int, tuple[int, int]]] = []
-    monkeypatch.setattr(os, "isatty", lambda fd: fd == clipy.justpty.STDOUT_FD)
-    monkeypatch.setattr(termios, "tcgetwinsize", lambda _fd: (24, 80))
-    monkeypatch.setattr(termios, "tcsetwinsize", lambda fd, size: recorded.append((fd, size)))
+
+    def is_stdout(fd: int) -> bool:
+        return fd == clipy.justpty.STDOUT_FD
+
+    def get_winsize(_fd: int) -> tuple[int, int]:
+        return (24, 80)
+
+    def record_winsize(fd: int, size: tuple[int, int]) -> None:
+        recorded.append((fd, size))
+
+    monkeypatch.setattr(os, "isatty", is_stdout)
+    monkeypatch.setattr(termios, "tcgetwinsize", get_winsize)
+    monkeypatch.setattr(termios, "tcsetwinsize", record_winsize)
 
     clipy.justpty.copy_winsize(99)
 
@@ -274,11 +289,28 @@ def test_1_6_3_run_under_pty_wires_spawn_signals_relay_and_the_exit_code_togethe
     master_read, master_write = os.pipe()
     os.close(master_write)
     calls: list[str] = []
-    monkeypatch.setattr(clipy.justpty, "spawn_just", lambda *_args: calls.append("spawn") or (4321, master_read))
-    monkeypatch.setattr(clipy.justpty, "copy_winsize", lambda _fd: calls.append("winsize"))
-    monkeypatch.setattr(clipy.justpty, "forward_signals", lambda *_args: calls.append("signals"))
-    monkeypatch.setattr(os, "waitpid", lambda pid, _opts: (pid, 0))
-    monkeypatch.setattr(os, "waitstatus_to_exitcode", lambda _status: 0)
+
+    def spawn_just(_just_binary: str, _recipe_args: list[str]) -> tuple[int, int]:
+        calls.append("spawn")
+        return (4321, master_read)
+
+    def copy_winsize(_master_fd: int) -> None:
+        calls.append("winsize")
+
+    def forward_signals(_child_pid: int, _master_fd: int) -> None:
+        calls.append("signals")
+
+    def reap(pid: int, _options: int) -> tuple[int, int]:
+        return (pid, 0)
+
+    def exit_cleanly(_status: int) -> int:
+        return 0
+
+    monkeypatch.setattr(clipy.justpty, "spawn_just", spawn_just)
+    monkeypatch.setattr(clipy.justpty, "copy_winsize", copy_winsize)
+    monkeypatch.setattr(clipy.justpty, "forward_signals", forward_signals)
+    monkeypatch.setattr(os, "waitpid", reap)
+    monkeypatch.setattr(os, "waitstatus_to_exitcode", exit_cleanly)
 
     exit_code = clipy.justpty.run_under_pty("just", ["recipe"], io.StringIO())
 
@@ -302,8 +334,14 @@ def test_1_6_4_link_latest_points_logs_just_log_at_the_given_run_log(tmp_path: P
 def test_1_6_5_run_just_writes_the_log_header_and_footer_and_prunes_stale_logs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(clipy.justpty, "run_under_pty", lambda *_args: FAKE_JUST_EXIT_CODE)
-    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/just")
+    def run_under_pty(_just_binary: str, _recipe_args: list[str], _log: TextIO) -> int:
+        return FAKE_JUST_EXIT_CODE
+
+    def find_just(_name: str) -> str:
+        return "/usr/bin/just"
+
+    monkeypatch.setattr(clipy.justpty, "run_under_pty", run_under_pty)
+    monkeypatch.setattr(shutil, "which", find_just)
     monkeypatch.chdir(tmp_path)
 
     status = clipy.justpty.run_just(["hello"])
@@ -317,7 +355,10 @@ def test_1_6_5_run_just_writes_the_log_header_and_footer_and_prunes_stale_logs(
 def test_1_6_6_the_cli_command_exits_with_run_justs_status_code(
     cli: CliRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(clipy.justpty, "run_just", lambda _args: FAKE_JUST_EXIT_CODE)
+    def run_just(_recipe_args: list[str]) -> int:
+        return FAKE_JUST_EXIT_CODE
+
+    monkeypatch.setattr(clipy.justpty, "run_just", run_just)
 
     result = cli.invoke(clipy.justpty.app, ["hello"])
 

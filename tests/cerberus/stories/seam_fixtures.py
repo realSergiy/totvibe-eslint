@@ -91,8 +91,14 @@ def run_check_with_files(
     """
 
     def _run(check_id: str, files: dict[str, str]) -> CheckResult:
-        monkeypatch.setattr(ctx, "paths", lambda _repo: sorted(files))
-        monkeypatch.setattr(ctx, "file", lambda _repo, path: files.get(path))
+        def list_paths(_repo: Repo) -> list[str]:
+            return sorted(files)
+
+        def read_file(_repo: Repo, path: str) -> str | None:
+            return files.get(path)
+
+        monkeypatch.setattr(ctx, "paths", list_paths)
+        monkeypatch.setattr(ctx, "file", read_file)
         return run_check(check_id, repo, ctx)
 
     return _run
@@ -105,7 +111,10 @@ def run_check_with_workflows(
     """Run a check by id against virtual workflow content, keyed by workflow file name."""
 
     def _run(check_id: str, workflows: dict[str, str]) -> CheckResult:
-        monkeypatch.setattr(ctx, "workflows", lambda _repo: workflows)
+        def read_workflows(_repo: Repo) -> dict[str, str]:
+            return workflows
+
+        monkeypatch.setattr(ctx, "workflows", read_workflows)
         return run_check(check_id, repo, ctx)
 
     return _run
@@ -196,7 +205,11 @@ def graph_search() -> ModuleType:
 @pytest.fixture
 def no_git(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch away the `git` binary so a story test can exercise the git-unavailable path."""
-    monkeypatch.setattr(proc.shutil, "which", lambda _tool: None)
+
+    def find_nothing(_tool: str) -> str | None:
+        return None
+
+    monkeypatch.setattr(proc.shutil, "which", find_nothing)
 
 
 @pytest.fixture

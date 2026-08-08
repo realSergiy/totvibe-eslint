@@ -121,39 +121,16 @@ packages = [
 [snap]
 packages = ["firefox", "chromium"]
 
-# rsyslog is journald's downstream, so it captures strictly less than journald and nothing at all
-# during a hard lockup — no process is scheduled to drain the socket, and its writes are unsynced.
-# Left half-disabled it is worse than absent: /var/log/{syslog,kern.log} sit at 0 bytes looking like
-# collected-but-empty evidence. Purged, journald (persistent, SystemMaxUse=4G) is the single log.
-# To bring it back, drop this section and [file.journald_no_syslog_forward], then reinstall.
-[bash.rsyslog_decommission]
+# journald's downstream, so it captures strictly less — and nothing during a hard lockup, where no
+# process is scheduled to drain its socket. Purging also settles journald's ForwardToSyslog: with no
+# syslog.service left to trigger syslog.socket, /run/systemd/journal/syslog never appears and the
+# forward is a no-op, so systemd's own ForwardToSyslog=yes drop-in needs no counter-drop-in.
+[bash.rsyslog_purge]
 needs_root = true
 depends_on = ["apt_pkg"]
 current_state = "dpkg-query -W -f='${Status}' rsyslog 2>/dev/null | grep -q 'install ok installed' && echo present || echo absent"
 desired_state = "absent"
-apply = '''
-set -euo pipefail
-DEBIAN_FRONTEND=noninteractive apt-get purge -y rsyslog
-# Only the current, provably empty files — the rotated archives are real history, never touched.
-for stale in /var/log/syslog /var/log/kern.log; do
-    [ -f "$stale" ] && [ ! -s "$stale" ] && rm -f "$stale"
-done
-'''
-
-# systemd ships /usr/lib/systemd/journald.conf.d/syslog.conf forcing ForwardToSyslog=yes, so journald
-# keeps pushing into a socket nobody drains (3,828 "Forwarding to syslog missed" notices in the boot
-# that froze). Drop-ins merge in lexical order across /usr and /etc, and "99-" sorts *before*
-# "syslog.conf" — the name has to outrank it, hence "zz-".
-[file.journald_no_syslog_forward]
-needs_root = true
-path = "/etc/systemd/journald.conf.d/zz-no-syslog-forward.conf"
-mode = "0644"
-depends_on = ["bash.rsyslog_decommission"]
-content = """
-[Journal]
-ForwardToSyslog=no
-"""
-post_hook = "systemctl restart systemd-journald.service"
+apply = "apt-get purge -y rsyslog"
 
 [bash.nix]
 needs_root = true
@@ -236,10 +213,6 @@ timer_min = 60
 
 [bash.totchef]
 depends_on = ["url.uv"]
-# Installs from the local zyplux checkout (two levels above this recipe file — see
-# $TOTCHEF_RECIPE below) rather than PyPI: totchef isn't published yet. Once it is, drop this
-# section and add "totchef" to [uv]'s `packages` list instead — the generic uv cook then
-# diffs against PyPI directly.
 current_state = '''
 installed="$(totchef --version 2>/dev/null | awk '{print $2}')"
 wanted="$(grep -m1 '^version' "$(dirname "$(dirname "$TOTCHEF_RECIPE")")/pyproject.toml" | cut -d'"' -f2)"
@@ -247,15 +220,8 @@ wanted="$(grep -m1 '^version' "$(dirname "$(dirname "$TOTCHEF_RECIPE")")/pyproje
 '''
 desired_state = "ok"
 apply = 'uv tool install --force --reinstall "$(dirname "$(dirname "$TOTCHEF_RECIPE")")"'
-# $TOTCHEF_RECIPE is this run's own resolved recipe path (see recipe.py) — repointing the
-# symlink at it (rather than hardcoding a repo location) keeps the pin correct after the repo
-# moves, as long as `totchef up` runs once from the new location to refresh it.
 post_hook = 'cfg="${XDG_CONFIG_HOME:-$HOME/.config}/totchef"; mkdir -p "$cfg" && ln -sfn "$TOTCHEF_RECIPE" "$cfg/recipe.toml" && totchef init "$cfg/recipe.toml"'
 
-# apps/clipy (a tested uv workspace member, not published to PyPI) is a folder of hand-written
-# CLI tools under active development — every script that lands there and meets the [local_bin]
-# contract (embeds __version__, offers --version/--help) is auto-discovered and kept on PATH,
-# with no further edit here when a new one is added (currently: ctop, justpty).
 [local_bin_dir]
 dirs = ["../../../clipy/src/clipy"]
 

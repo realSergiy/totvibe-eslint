@@ -42,7 +42,7 @@ An Intel ME update exists (`ME15055_U`, 2026-04-29; installed `15.0.50.2633`). M
   - `[usr_local_sbin.egpu-link-probe]` + `[file.egpu-link-telemetry]` — sample replay counters, link speed/width along the whole bridge chain, AER totals, and Thunderbolt lane state into the journal every 30 s. No reboot needed.
   - `[file.grub_pcie_diagnostics]` — `pcie_ports=native` to claim AER/DPC over the firmware's refusal; `crash_kexec_post_notifiers=1` so pstore is written before kexec is attempted.
   - `[file.hardlockup_capture]` — `hardlockup_panic=1`, `hardlockup_all_cpu_backtrace=1`, `panic=20`. `softlockup_panic` deliberately left at 0.
-  - `[bash.rsyslog_decommission]` + `[file.journald_no_syslog_forward]` — rsyslog captured nothing (journald's downstream, unscheduled during a lockup) and had been dead since Aug 1, leaving `/var/log/{syslog,kern.log}` at 0 bytes.
+  - `[bash.rsyslog_purge]` — rsyslog captured nothing (journald's downstream, unscheduled during a lockup) and had been dead since Aug 1, leaving `/var/log/{syslog,kern.log}` at 0 bytes.
 
 ## Next
 

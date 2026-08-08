@@ -93,7 +93,11 @@ def run_release_bumps(
             files["release-targets.toml"] = manifest
         if version_file_content is not None:
             files[version_path] = version_file_content
-        monkeypatch.setattr(ctx, "file", lambda _repo, path: files.get(path))
+
+        def read_file(_repo: Repo, path: str) -> str | None:
+            return files.get(path)
+
+        monkeypatch.setattr(ctx, "file", read_file)
 
         is_pypi = "pypi" in (manifest or "")
         package = "zyplux-widget" if is_pypi else "@zyplux/widget"

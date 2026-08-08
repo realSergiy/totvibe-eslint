@@ -17,6 +17,9 @@ console = Console(highlight=False)
 
 LARGEST_FILES_LIMIT = 10
 
+# Sorts untimed metrics below every timed one in the totals table.
+_UNTIMED_SECONDS = -1.0
+
 CODE_COUNTER_COLUMNS = [key for key, _ in CODE_COUNTERS] + ["code_tokens_norm"]
 DOC_COUNTER_COLUMNS = [key for key, _ in DOC_COUNTERS] + ["doc_tokens_norm", "doc_chars_norm", "doc_words_norm"]
 
@@ -32,7 +35,11 @@ NOT_SUMMABLE_COLUMNS = frozenset({
 def _print_totals(df: pl.DataFrame, timings: dict[str, float]) -> None:
     totals = df.drop("file_path").sum()
     columns = [column for column in totals.columns if column not in NOT_SUMMABLE_COLUMNS]
-    columns.sort(key=lambda column: timings.get(column, -1.0), reverse=True)
+
+    def rank_by_time(column: str) -> float:
+        return timings.get(column, _UNTIMED_SECONDS)
+
+    columns.sort(key=rank_by_time, reverse=True)
 
     table = Table(title=f"Totals ({df.height} files)")
     table.add_column("metric")

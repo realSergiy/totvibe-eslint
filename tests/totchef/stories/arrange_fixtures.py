@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from typing import Self
 
     from act_fixtures import Totchef
+    from totchef.cook_base import CookResult
     from totchef.recipe_types import RecipeConfig, RecipeValue
 
 CHEZMOI_COOK = (Path(__file__).resolve().parents[3] / "apps/totchef/examples/totchef_cooks/chezmoi_cook.py").read_text()
@@ -613,8 +614,15 @@ def escalation_probe(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Callabl
     def arm() -> list[tuple[str, list[str]]]:
         escalations: list[tuple[str, list[str]]] = []
         monkeypatch.setattr("os.geteuid", lambda: 1000)
-        monkeypatch.setattr("os.execvp", lambda *argv: escalations.append(argv))
-        monkeypatch.setattr("totchef.cli.run_recipe", lambda *_args, **_kwargs: {})
+
+        def record_execvp(file: str, args: list[str]) -> None:
+            escalations.append((file, args))
+
+        def skip_recipe(_config: RecipeConfig, **_options: bool) -> dict[str, CookResult]:
+            return {}
+
+        monkeypatch.setattr("os.execvp", record_execvp)
+        monkeypatch.setattr("totchef.cli.run_recipe", skip_recipe)
         monkeypatch.setattr("totchef.cli.start_logging", lambda _echo_to_terminal=True: nullcontext(tmp_path / "log"))
         monkeypatch.setattr("totchef.cli.drain_logs", lambda: None)
         return escalations
@@ -679,7 +687,11 @@ def register_plugin(monkeypatch: pytest.MonkeyPatch) -> Callable[[str, str], Non
             dist=SimpleNamespace(name=dist),
             load=lambda: BashCook,
         )
-        monkeypatch.setattr(registry, "entry_points", lambda group: [*real_entry_points(group=group), plugin])
+
+        def list_entry_points(group: str) -> list[object]:
+            return [*real_entry_points(group=group), plugin]
+
+        monkeypatch.setattr(registry, "entry_points", list_entry_points)
         registry.cook_registry.cache_clear()
 
     return register

@@ -91,7 +91,7 @@ def _run_check(check: bites.Check, repo: Repo, ctx: Context) -> CheckResult:
 
 
 def _failed(results: list[CheckResult]) -> bool:
-    return any(result.status.rank >= Status.FAIL.rank for result in results)
+    return any(result.status >= Status.FAIL for result in results)
 
 
 @app.command()

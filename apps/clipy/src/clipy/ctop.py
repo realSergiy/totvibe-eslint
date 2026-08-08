@@ -125,6 +125,10 @@ def find_main_processes() -> list[psutil.Process]:
     return mains
 
 
+def rank_by_load(row: ProcessRow) -> tuple[float, int]:
+    return (row.cpu_percent, row.rss_bytes)
+
+
 def sample_processes(tracked: dict[int, psutil.Process]) -> list[ProcessRow]:
     rows: list[ProcessRow] = []
     live_pids: set[int] = set()
@@ -151,7 +155,7 @@ def sample_processes(tracked: dict[int, psutil.Process]) -> list[ProcessRow]:
             rows.append(ProcessRow(proc.pid, variant, role, cpu_percent, rss_bytes))
     for stale_pid in set(tracked) - live_pids:
         del tracked[stale_pid]
-    return sorted(rows, key=lambda row: (row.cpu_percent, row.rss_bytes), reverse=True)
+    return sorted(rows, key=rank_by_load, reverse=True)
 
 
 def list_inspector_addresses(pid: int) -> list[tuple[str, int]]:
