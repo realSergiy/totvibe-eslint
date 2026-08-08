@@ -20,6 +20,7 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from cerberus import workspaces
 from cerberus.bites import story_docs
 
 if TYPE_CHECKING:
@@ -86,7 +87,7 @@ def _check_exports_surface(res: CheckResult, manifest_path: str, manifest: dict[
 def ts_paths_and_members(repo: Repo, ctx: Context, res: CheckResult) -> tuple[list[str], list[str]] | None:
     """The repo's paths and JS/TS workspace member dirs, or None (skip recorded) without TypeScript packages."""
     paths = ctx.paths(repo)
-    members = story_docs.ts_member_dirs(repo, ctx, paths)
+    members = workspaces.ts_member_dirs(repo, ctx, paths)
     if not members:
         res.skip("no TypeScript packages")
         return None
@@ -115,7 +116,7 @@ class Seam:
     @classmethod
     def from_paths(cls, repo: Repo, ctx: Context, subject: str, paths: list[str]) -> Seam:
         story_files = [path for path in paths if _STORY_TEST_PATH.search(path)]
-        members = story_docs.ts_member_dirs(repo, ctx, paths)
+        members = workspaces.ts_member_dirs(repo, ctx, paths)
         names = frozenset(
             name
             for member in members

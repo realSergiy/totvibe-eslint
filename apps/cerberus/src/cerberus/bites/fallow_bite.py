@@ -238,13 +238,8 @@ def _record_complexity(res: CheckResult, ctx: Context, analysis: _Analysis, *, r
 
 def _packageless_member_dirs(repo: Repo, ctx: Context) -> list[str]:
     repo_root = ctx.source.root.resolve()
-    packageless = {
-        match.relative_to(repo_root).as_posix()
-        for glob in workspaces.ts_member_globs(repo, ctx)
-        for match in repo_root.glob(glob)
-        if match.is_dir() and not (match / "package.json").is_file()
-    }
-    return sorted(packageless)
+    members = workspaces.member_paths(repo_root, workspaces.ts_member_globs(repo, ctx))
+    return [m.relative_to(repo_root).as_posix() for m in members if not (m / "package.json").is_file()]
 
 
 def run(repo: Repo, ctx: Context) -> CheckResult:

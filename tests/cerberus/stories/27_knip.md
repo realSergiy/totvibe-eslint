@@ -36,7 +36,7 @@
 
 ### 27.4.2 fails when includeEntryExports is not true
 
-### 27.4.3 fails when ignoreWorkspaces does not match the test harness glob
+### 27.4.3 fails and names a non production workspace ignoreWorkspaces leaves in the graph
 
 ### 27.4.4 fails and names an unexpected top level key
 
@@ -69,3 +69,19 @@
 ### 27.4.18 allows excluding exactly the catalog issue type
 
 ### 27.4.19 fails when exclude covers anything beyond the catalog issue type
+
+### 27.4.20 passes on any glob spelling that drops exactly the non production workspaces
+
+### 27.4.21 fails and names a production workspace dropped from the graph
+
+### 27.4.22 fails when ignoreWorkspaces is not a list of globs
+
+### 27.4.23 errors when the pnpm workspace manifest is not valid yaml
+
+### 27.4.24 fails when a nested non production workspace stays in the graph
+
+### 27.4.25 fails when a workspace outside the production roots stays in the graph
+
+### 27.4.26 takes the production workspaces from cerberus configuration
+
+### 27.4.27 ignores workspace members the pnpm manifest excludes

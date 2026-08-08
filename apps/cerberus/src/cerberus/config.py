@@ -22,11 +22,12 @@ class Config:
     ci_required_ts: tuple[str, ...]
     ci_required_python: tuple[str, ...]
     pyrefly_error_kinds: frozenset[str]
+    pyrefly_prod_workspaces: tuple[str, ...]
     ruff_sanctioned_ignore: frozenset[str]
     ruff_sanctioned_test_ignore: frozenset[str]
     line_width: int
     rumdl_canonical: str
-    knip_required_ignore_workspaces: list[str]
+    knip_prod_workspaces: tuple[str, ...]
     knip_prod_allowed_exclude: list[str]
     knip_allowed_customizations: dict[str, frozenset[str]]
     pytest_min_coverage: int
@@ -70,6 +71,7 @@ def _from_dict(data: dict[str, Any]) -> Config:
     required = justfile["required"]
     recommended = justfile["recommended"]
     ci = _table(data, "ci_check_sequence")
+    pyrefly = _table(data, "pyrefly")
     ruff = _table(data, "ruff")
     knip = _table(data, "knip")
     jscpd = _table(data, "jscpd")
@@ -84,12 +86,13 @@ def _from_dict(data: dict[str, Any]) -> Config:
         allowed_setup_actions=tuple(_table(data, "workflow_toolchain_only")["allowed_setup_actions"]),
         ci_required_ts=tuple(_table(ci, "required")["ts"]),
         ci_required_python=tuple(_table(ci, "required")["python"]),
-        pyrefly_error_kinds=frozenset(_table(data, "pyrefly")["error_kinds"]),
+        pyrefly_error_kinds=frozenset(pyrefly["error_kinds"]),
+        pyrefly_prod_workspaces=tuple(pyrefly["prod_workspaces"]),
         ruff_sanctioned_ignore=frozenset(ruff["sanctioned_ignore"]),
         ruff_sanctioned_test_ignore=frozenset(ruff["sanctioned_test_ignore"]),
         line_width=_table(data, "line_length")["width"],
         rumdl_canonical=_table(data, "rumdl")["canonical"],
-        knip_required_ignore_workspaces=list(knip["required_ignore_workspaces"]),
+        knip_prod_workspaces=tuple(knip["prod_workspaces"]),
         knip_prod_allowed_exclude=list(knip["prod_allowed_exclude"]),
         knip_allowed_customizations={
             key: frozenset(names) for key, names in _table(knip, "allowed_customizations").items()

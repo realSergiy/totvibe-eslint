@@ -36,9 +36,11 @@
 
 ### 28.4.2 falls back to the repo root when no manifest declares workspaces
 
-### 28.4.3 errors when the pnpm workspace manifest is not valid YAML instead of crashing
+### 28.4.3 skips the directories the workspace manifest excludes
 
-### 28.4.4 errors when pyproject.toml is not valid TOML instead of crashing
+### 28.4.4 errors when the pnpm workspace manifest is not valid YAML instead of crashing
+
+### 28.4.5 errors when pyproject.toml is not valid TOML instead of crashing
 
 ## 28.5 itemizing clones in verbose runs
 

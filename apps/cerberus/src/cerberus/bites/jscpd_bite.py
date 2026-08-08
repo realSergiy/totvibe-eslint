@@ -47,8 +47,8 @@ class _LanguageStat:
 def _scan_roots(repo: Repo, ctx: Context) -> list[Path]:
     repo_root = ctx.source.root.resolve()
     globs = [*workspaces.ts_member_globs(repo, ctx), *workspaces.uv_member_globs(repo, ctx)]
-    members = {match for glob in globs for match in repo_root.glob(glob) if match.is_dir()}
-    return sorted(members) if members else [repo_root]
+    members = workspaces.member_paths(repo_root, globs)
+    return members or [repo_root]
 
 
 def _selection_argv(ctx: Context) -> list[str]:

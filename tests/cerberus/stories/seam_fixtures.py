@@ -27,7 +27,7 @@ import subprocess
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pytest
 from cerberus import bites, config, context, proc, registries, tool_pins
@@ -42,7 +42,14 @@ if TYPE_CHECKING:
     from cerberus.context import Context
 
 type RunCheck = Callable[[str, Repo, Context], CheckResult]
-type RunCheckWithFiles = Callable[[str, dict[str, str]], CheckResult]
+
+
+class RunCheckWithFiles(Protocol):
+    """Run a check by id against virtual file content, optionally under a repo cerberus.toml overlay."""
+
+    def __call__(self, check_id: str, files: dict[str, str], config_toml: str | None = None) -> CheckResult: ...
+
+
 type RunCheckWithWorkflows = Callable[[str, dict[str, str]], CheckResult]
 type RunCheckOnDisk = Callable[..., CheckResult]
 type MakeContext = Callable[..., Context]
@@ -79,7 +86,7 @@ def run_check() -> RunCheck:
 
 @pytest.fixture
 def run_check_with_files(
-    repo: Repo, ctx: Context, run_check: RunCheck, monkeypatch: pytest.MonkeyPatch
+    repo: Repo, ctx: Context, run_check: RunCheck, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> RunCheckWithFiles:
     """Run a check by id against virtual file content, keyed by repo-relative path.
 
@@ -87,10 +94,11 @@ def run_check_with_files(
     a real repo missing that path. `ctx.paths` is also stubbed to enumerate
     exactly this `files` mapping's keys, for checks that list a directory
     (e.g. discovering workspace packages or story-test files) rather than
-    reading one known path.
+    reading one known path. `config_toml` overlays the bundled cerberus
+    defaults, for checks whose verdict a repo may tune.
     """
 
-    def _run(check_id: str, files: dict[str, str]) -> CheckResult:
+    def _run(check_id: str, files: dict[str, str], config_toml: str | None = None) -> CheckResult:
         def list_paths(_repo: Repo) -> list[str]:
             return sorted(files)
 
@@ -99,6 +107,10 @@ def run_check_with_files(
 
         monkeypatch.setattr(ctx, "paths", list_paths)
         monkeypatch.setattr(ctx, "file", read_file)
+        if config_toml is not None:
+            overlay = tmp_path / "cerberus.toml"
+            overlay.write_text(config_toml)
+            monkeypatch.setattr(ctx, "config", config.load(overlay))
         return run_check(check_id, repo, ctx)
 
     return _run

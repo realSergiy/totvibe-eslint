@@ -17,7 +17,18 @@ recommended = [
     { recipe = "clean" },
 ]
 check_pipeline = ["install", "knip", "typecheck", "lint", "test"]
-wrapped_tools = ["ruff", "pyrefly", "pytest", "rumdl", "vulture", "cerberus", "eslint", "prettier", "knip", "tsc"]
+wrapped_tools = [
+    "ruff",
+    "pyrefly",
+    "pytest",
+    "rumdl",
+    "vulture",
+    "cerberus",
+    "eslint",
+    "prettier",
+    "knip",
+    "tsc",
+]
 
 [ci_workflow_gate]
 
@@ -45,10 +56,14 @@ python = [
 [ci_cerberus_step]
 
 [workflow_toolchain_only]
-allowed_setup_actions = ["astral-sh/setup-uv", "pnpm/action-setup", "actions/setup-node"]
+allowed_setup_actions = [
+    "astral-sh/setup-uv",
+    "pnpm/action-setup",
+    "actions/setup-node",
+]
 
-# Error kinds pinned by the org: they may only appear under `errors`, never at the top level.
 [pyrefly]
+prod_workspaces = ["apps/*", "packages/*"]
 error_kinds = [
     "implicit-any",
     "implicit-any-parameter",
@@ -63,7 +78,17 @@ error_kinds = [
 ]
 
 [ruff]
-sanctioned_ignore = ["COM812", "ISC001", "D", "DOC", "CPY001", "S404", "S603", "S606", "S607"]
+sanctioned_ignore = [
+    "COM812",
+    "ISC001",
+    "D",
+    "DOC",
+    "CPY001",
+    "S404",
+    "S603",
+    "S606",
+    "S607",
+]
 sanctioned_test_ignore = ["ANN001", "INP001", "S101"]
 
 [line_length]
@@ -86,16 +111,9 @@ siblings-only = true
 '''
 
 [knip]
-required_ignore_workspaces = ["tests/*"]
-# The prod pass may exclude exactly the catalog issue type: with `ignoreWorkspaces: ["tests/*"]`
-# knip cannot see test usage of catalog entries, so test-only entries would read as unused —
-# the base pass, which keeps tests in the graph, still checks the catalog.
+prod_workspaces = ["apps/*", "packages/*"]
 prod_allowed_exclude = ["catalog"]
 
-# Per-key allowances any org repo may draw from in its knip.json.
-# ignoreBinaries: system-level tools invoked from JS/TS scripts without being npm dependencies;
-# knip's built-in global-binary list covers docker/git/curl/… but not these.
-# ignoreDependencies: packages consumed in ways knip cannot trace.
 [knip.allowed_customizations]
 ignoreBinaries = ["podman", "uv"]
 ignoreDependencies = ["cloudflare"]

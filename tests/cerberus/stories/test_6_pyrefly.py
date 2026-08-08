@@ -36,13 +36,14 @@ def run_pyrefly(run_check_with_files: RunCheckWithFiles) -> RunPyrefly:
         pyrefly: str | None = _PYREFLY_STRICT,
         pyproject: str | None = "[project]\n",
         paths: list[str] | None = None,
+        config_toml: str | None = None,
     ) -> CheckResult:
         files: dict[str, str] = dict.fromkeys(paths if paths is not None else _PY_PATHS, "")
         if pyproject is not None:
             files["pyproject.toml"] = pyproject
         if pyrefly is not None:
             files["pyrefly.toml"] = pyrefly
-        return run_check_with_files(CHECK_ID, files)
+        return run_check_with_files(CHECK_ID, files, config_toml)
 
     return run
 
@@ -188,3 +189,14 @@ def test_6_8_2_fails_when_the_exclude_heuristic_overrides_are_set_to_the_wrong_v
             " disable-project-excludes-heuristics=False, use-ignore-files=True"
         )
     ]
+
+
+def test_6_9_1_type_checks_a_configured_production_workspace_outside_the_default_globs(
+    run_pyrefly: RunPyrefly, fail: MakeFinding
+) -> None:
+    result = run_pyrefly(
+        paths=["tools/lint/src/lint/cli.py"],
+        config_toml='[pyrefly]\nprod_workspaces = ["tools/*"]\n',
+    )
+
+    assert result.findings == [fail("pyrefly.toml project-includes does not cover: tools/lint/src")]

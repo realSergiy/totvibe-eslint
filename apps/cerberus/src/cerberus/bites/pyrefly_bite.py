@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
+from cerberus import workspaces
 from cerberus.bites import py_tool_config
 from cerberus.model import CheckResult, Repo, Scope
 
@@ -17,17 +18,16 @@ PATH = "pyrefly.toml"
 REQUIRED_PRESET = "strict"
 _REQUIRED_EXCLUDE_OVERRIDES = {"disable-project-excludes-heuristics": True, "use-ignore-files": False}
 
-_PRODUCTION_TOPS = ("apps", "packages")
 _TESTS_TOP = "tests"
 _NAMESPACE_DEPTH = 2
 _SRC_LAYOUT_DEPTH = 3
 
 
-def _python_roots(paths: list[str]) -> tuple[set[str], set[str]]:
+def _python_roots(paths: list[str], prod_globs: tuple[str, ...]) -> tuple[set[str], set[str]]:
     """The repo's production and test Python roots, by org layout convention.
 
-    `apps/<name>/src` and `packages/<name>/src` (or `apps/<name>` without a src
-    layout) are production; `tests/<name>` is tests.
+    A member the `prod_workspaces` globs name is production — its `src` subtree
+    when it has one, the member dir itself when it doesn't; `tests/<name>` is tests.
     """
     production: set[str] = set()
     tests: set[str] = set()
@@ -37,7 +37,7 @@ def _python_roots(paths: list[str]) -> tuple[set[str], set[str]]:
         seg = path.split("/")
         if seg[0] == _TESTS_TOP:
             tests.add("/".join(seg[:_NAMESPACE_DEPTH]) if len(seg) > _NAMESPACE_DEPTH else _TESTS_TOP)
-        elif seg[0] in _PRODUCTION_TOPS and len(seg) > _NAMESPACE_DEPTH:
+        elif len(seg) > _NAMESPACE_DEPTH and workspaces.matches_globs("/".join(seg[:_NAMESPACE_DEPTH]), prod_globs):
             src_layout = len(seg) > _SRC_LAYOUT_DEPTH and seg[_NAMESPACE_DEPTH] == "src"
             depth = _SRC_LAYOUT_DEPTH if src_layout else _NAMESPACE_DEPTH
             production.add("/".join(seg[:depth]))
@@ -125,7 +125,7 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
     if pyproject is None:
         return res
 
-    production_roots, test_roots = _python_roots(ctx.paths(repo))
+    production_roots, test_roots = _python_roots(ctx.paths(repo), ctx.config.pyrefly_prod_workspaces)
     if not production_roots and not test_roots:
         res.skip("no Python source")
         return res

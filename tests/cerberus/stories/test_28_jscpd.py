@@ -235,6 +235,23 @@ def test_28_4_1_scans_only_the_directories_the_workspace_manifests_register(
     assert _mask_report_dir(fake_proc.calls) == [expected]
 
 
+def test_28_4_3_skips_the_directories_the_workspace_manifest_excludes(
+    run_jscpd: RunJscpdDupes, fake_proc: FakeProc, repo_root: Path, npm_tool_spec: NpmToolSpec
+) -> None:
+    fake_proc.serve("jscpd", output_files=_UNDER_THRESHOLD_REPORT)
+    (repo_root / "apps" / "web").mkdir(parents=True)
+    (repo_root / "apps" / "scratch").mkdir(parents=True)
+    run_jscpd(
+        files={
+            "package.json": "{}",
+            "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - '!apps/scratch'\n",
+        }
+    )
+    expected_roots = [str(repo_root.resolve() / "apps" / "web")]
+    expected = (_argv(npm_tool_spec("jscpd"), expected_roots), Path(_REPORT_DIR_PLACEHOLDER))
+    assert _mask_report_dir(fake_proc.calls) == [expected]
+
+
 def test_28_4_2_falls_back_to_the_repo_root_when_no_manifest_declares_workspaces(
     run_jscpd: RunJscpdDupes, fake_proc: FakeProc, repo_root: Path, npm_tool_spec: NpmToolSpec
 ) -> None:
@@ -244,7 +261,7 @@ def test_28_4_2_falls_back_to_the_repo_root_when_no_manifest_declares_workspaces
     assert _mask_report_dir(fake_proc.calls) == [expected]
 
 
-def test_28_4_3_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
+def test_28_4_4_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
     run_jscpd: RunJscpdDupes, fake_proc: FakeProc, status: type[Status]
 ) -> None:
     result = run_jscpd(files={"pnpm-workspace.yaml": "packages: ["})
@@ -253,7 +270,7 @@ def test_28_4_3_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instea
     assert fake_proc.calls == []
 
 
-def test_28_4_4_errors_when_pyproject_toml_is_not_valid_toml_instead_of_crashing(
+def test_28_4_5_errors_when_pyproject_toml_is_not_valid_toml_instead_of_crashing(
     run_jscpd: RunJscpdDupes, fake_proc: FakeProc, status: type[Status]
 ) -> None:
     result = run_jscpd(files={"pyproject.toml": "members = ["})

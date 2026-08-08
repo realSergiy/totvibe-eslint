@@ -281,7 +281,23 @@ def test_29_5_1_shields_fallow_behind_a_cerberus_owned_config_ignoring_workspace
     assert all(not cwd.is_relative_to(repo_root) for _, cwd in fake_proc.calls if cwd is not None)
 
 
-def test_29_5_2_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
+def test_29_5_2_leaves_out_workspace_dirs_the_manifest_excludes(
+    run_fallow: RunFallow, fake_proc: FakeProc, repo_root: Path
+) -> None:
+    _serve_clean(fake_proc)
+    (repo_root / "apps" / "py").mkdir(parents=True)
+    (repo_root / "apps" / "scratch").mkdir(parents=True)
+
+    run_fallow({
+        "package.json": json.dumps({"name": "demo"}),
+        "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - '!apps/scratch'\n",
+    })
+
+    snapshots = [json.loads(snapshot) for snapshot in fake_proc.config_snapshots]
+    assert all(snapshot["ignorePatterns"] == ["apps/py"] for snapshot in snapshots)
+
+
+def test_29_5_3_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml_instead_of_crashing(
     run_fallow: RunFallow, fake_proc: FakeProc, status: type[Status]
 ) -> None:
     result = run_fallow({"package.json": _PACKAGE_JSON, "pnpm-workspace.yaml": "packages: ["})
@@ -297,7 +313,7 @@ _DEAD_CODE_WITH_ISSUES = json.dumps({
 })
 
 
-def test_29_5_3_switches_off_fallows_default_duplicate_ignores_so_test_files_count(
+def test_29_5_4_switches_off_fallows_default_duplicate_ignores_so_test_files_count(
     run_fallow: RunFallow, fake_proc: FakeProc
 ) -> None:
     _serve_clean(fake_proc)

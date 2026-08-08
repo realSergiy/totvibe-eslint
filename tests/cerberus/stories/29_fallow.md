@@ -36,9 +36,11 @@ Tests are as load-bearing as production code, so the cerberus-owned config also 
 
 ### 29.5.1 shields fallow behind a cerberus-owned config ignoring workspace dirs without a package.json
 
-### 29.5.2 errors when the pnpm workspace manifest is not valid YAML instead of crashing
+### 29.5.2 leaves out workspace dirs the manifest excludes
 
-### 29.5.3 switches off fallow's default duplicate ignores so test files count
+### 29.5.3 errors when the pnpm workspace manifest is not valid YAML instead of crashing
+
+### 29.5.4 switches off fallow's default duplicate ignores so test files count
 
 ## 29.6 itemizing dead-code issues in verbose runs
 

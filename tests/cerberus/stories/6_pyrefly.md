@@ -45,3 +45,7 @@
 ### 6.8.1 fails when the exclude heuristic overrides are missing
 
 ### 6.8.2 fails when the exclude heuristic overrides are set to the wrong values
+
+## 6.9 sourcing the production workspaces from cerberus configuration
+
+### 6.9.1 type checks a configured production workspace outside the default globs

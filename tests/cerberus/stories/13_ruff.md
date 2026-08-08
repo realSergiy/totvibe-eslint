@@ -26,6 +26,14 @@
 
 ### 13.5.2 fails and names the rule when an ignore falls outside the sanctioned set
 
+### 13.5.3 passes when a sanctioned ignore is spelled as ruff's rule name
+
+### 13.5.4 fails and echoes the spelling when an ignore spelled as a rule name is unsanctioned
+
+### 13.5.5 errors when ruff is not on path to resolve a rule name
+
+### 13.5.6 errors when ruff cannot list its rules
+
 ## 13.6 keeping test file relaxations within the sanctioned test set
 
 ### 13.6.1 passes when there are no per file ignores
@@ -35,6 +43,8 @@
 ### 13.6.3 passes regardless of which glob names the test files
 
 ### 13.6.4 fails and names the rule when a test relaxation falls outside the sanctioned set
+
+### 13.6.5 passes when a sanctioned test relaxation is spelled as ruff's rule name
 
 ## 13.7 passing a fully compliant config
 

@@ -8,13 +8,20 @@ own targeted finding.
 from __future__ import annotations
 
 import tomllib
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 import yaml
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
     from cerberus.context import Context
     from cerberus.model import Repo
+
+_SUBTREE_SUFFIX = "/**"
+TEST_HARNESS_ROOT = "tests"  # the workspace root reserved for cross-package test tooling, never a product itself
 
 
 def ts_member_globs(repo: Repo, ctx: Context) -> list[str]:
@@ -32,3 +39,57 @@ def uv_member_globs(repo: Repo, ctx: Context) -> list[str]:
         return []
     workspace = tomllib.loads(pyproject).get("tool", {}).get("uv", {}).get("workspace", {})
     return list(workspace.get("members", []))
+
+
+def matches_globs(directory: str, globs: Iterable[str]) -> bool:
+    """Match a dir against member globs the way a workspace manager does — `*` within a path segment, `**` any depth."""
+    return any(PurePosixPath(directory).full_match(glob.rstrip("/")) for glob in globs)
+
+
+def _excluded_globs(globs: Iterable[str]) -> list[str]:
+    """The `!` patterns a manifest excludes; a trailing `/**` also names the dir itself, as pnpm reads it."""
+    excluded = []
+    for glob in globs:
+        if not glob.startswith("!"):
+            continue
+        pattern = glob.removeprefix("!").rstrip("/")
+        excluded.append(pattern)
+        if pattern.endswith(_SUBTREE_SUFFIX):
+            excluded.append(pattern[: -len(_SUBTREE_SUFFIX)])
+    return excluded
+
+
+def member_paths(root: Path, globs: Iterable[str]) -> list[Path]:
+    """Every dir on disk that `globs` registers as a workspace member, `!` exclusions honoured."""
+    included = [glob for glob in globs if not glob.startswith("!")]
+    excluded = _excluded_globs(globs)
+    matched = {match for glob in included for match in root.glob(glob) if match.is_dir()}
+    return sorted(m for m in matched if not matches_globs(m.relative_to(root).as_posix(), excluded))
+
+
+def member_dirs(paths: list[str], globs: list[str], manifest_name: str) -> list[str]:
+    """Every dir carrying `manifest_name` that `globs` registers as a workspace member, `!` exclusions honoured."""
+    suffix = f"/{manifest_name}"
+    dirs = {path[: -len(suffix)] for path in paths if path.endswith(suffix)}
+    included = [glob for glob in globs if not glob.startswith("!")]
+    excluded = _excluded_globs(globs)
+    return sorted(d for d in dirs if matches_globs(d, included) and not matches_globs(d, excluded))
+
+
+def ts_member_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
+    """Every JS/TS workspace member dir — the test-harness members included."""
+    if ctx.file(repo, "package.json") is None:
+        return []
+    globs = ts_member_globs(repo, ctx)
+    if globs:
+        return member_dirs(paths, globs, "package.json")
+    return [""]
+
+
+def is_test_harness(member_dir: str) -> bool:
+    """Whether a member dir is one of the `tests/` workspaces this org tears every package's tests out to."""
+    return member_dir.split("/", 1)[0] == TEST_HARNESS_ROOT
+
+
+def without_test_harness(dirs: list[str]) -> list[str]:
+    return [d for d in dirs if not is_test_harness(d)]
