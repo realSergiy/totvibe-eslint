@@ -47,7 +47,7 @@ path and shared log file across the boundary so root sees the same file.
 Each resource runs in a forked child: a `needs_root` child keeps root; every
 other child **drops privilege** back to the invoking user (gid → groups → uid) and
 repoints `HOME`/`USER`/`PATH`. So user files are written as the user, and freshly
-bootstrapped toolchains (`~/.cargo/bin`, `~/.bun/bin`, `~/.local/bin`) are found on
+bootstrapped toolchains (`~/.cargo/bin`, `~/.local/share/pnpm/bin`, `~/.local/bin`) are found on
 the next step's PATH.
 
 ### 7.3.3 plan and lint never escalate
@@ -70,6 +70,14 @@ re-exec share one log file, but the root process only trusts an inherited value
 that resolves inside the operator's own log directory. A value pointing outside
 it (however it got set) is ignored — the root process never touches, let alone
 chowns to the operator, a path it doesn't already expect to own.
+
+### 7.3.6 state dirs root creates in the operators home are handed back
+
+Opening the run's log file happens as root and creates whatever is missing under
+the operator's home (`~/.local`, `~/.local/state`, …). Every directory root creates
+there is chowned back to the operator, so a cook that later drops privilege can
+still write beside it — a root-owned `~/.local` would otherwise block a user-scoped
+cook from creating `~/.local/share/pnpm`.
 
 ## 7.4 Distinguish recoverable failures from fatal ones
 
@@ -116,6 +124,6 @@ guard).
 ### 7.5.3 hooks run on versioned sections too
 
 `pre_hook`/`post_hook` are valid on every cook section, versioned ones included.
-On a versioned section (`[cargo]`, `[bun]`, …) the `pre_hook` gates the whole
+On a versioned section (`[cargo]`, `[pnpm]`, …) the `pre_hook` gates the whole
 sync — a non-zero exit **skips** it — and the `post_hook` fires once after a
 change (e.g. linking a freshly-installed binary onto `PATH`).

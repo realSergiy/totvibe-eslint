@@ -34,6 +34,7 @@ describe('5.2 bootstrapping an npm target', () => {
 
   test('5.2.2 publishes the target when its version is not yet on npm', async ({
     cz,
+    expectNpmPackAndPublish,
     logs,
     registries,
     shell,
@@ -45,12 +46,7 @@ describe('5.2 bootstrapping an npm target', () => {
 
     await cz.run('bootstrap-npm-target', '@zyplux/util');
 
-    expect(shell.calls).toContainEqual({ argv: ['pack'], cwd: targets.util.dir, program: 'pnpm' });
-    expect(shell.calls).toContainEqual({
-      argv: ['publish', 'zyplux-util-1.2.3.tgz', '--access', 'public'],
-      cwd: targets.util.dir,
-      program: 'npm',
-    });
+    expectNpmPackAndPublish(shell, targets.util.dir, 'zyplux-util-1.2.3.tgz');
     expect(logs).toHaveLogged(
       'Published @zyplux/util 1.2.3. Enable its trusted publisher on npmjs.com; later releases publish via OIDC.',
     );

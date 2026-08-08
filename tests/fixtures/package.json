@@ -19,8 +19,15 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./package.json": "./package.json"
+    "./cli": "./src/cli.ts",
+    "./console": "./src/console.ts",
+    "./fetch": "./src/fetch.ts",
+    "./fs": "./src/fs.ts",
+    "./matchers": "./src/matchers.ts",
+    "./package.json": "./package.json",
+    "./prompt": "./src/prompt.ts",
+    "./shell": "./src/shell.ts",
+    "./story": "./src/story.ts"
   },
   "files": [
     "README.md",
@@ -29,24 +36,50 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+      "./cli": {
+        "types": "./dist/cli.d.ts",
+        "default": "./dist/cli.js"
       },
-      "./package.json": "./package.json"
+      "./console": {
+        "types": "./dist/console.d.ts",
+        "default": "./dist/console.js"
+      },
+      "./fetch": {
+        "types": "./dist/fetch.d.ts",
+        "default": "./dist/fetch.js"
+      },
+      "./fs": {
+        "types": "./dist/fs.d.ts",
+        "default": "./dist/fs.js"
+      },
+      "./matchers": {
+        "types": "./dist/matchers.d.ts",
+        "default": "./dist/matchers.js"
+      },
+      "./package.json": "./package.json",
+      "./prompt": {
+        "types": "./dist/prompt.d.ts",
+        "default": "./dist/prompt.js"
+      },
+      "./shell": {
+        "types": "./dist/shell.d.ts",
+        "default": "./dist/shell.js"
+      },
+      "./story": {
+        "types": "./dist/story.d.ts",
+        "default": "./dist/story.js"
+      }
     }
   },
   "scripts": {
     "prepack": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
-    "@zyplux/util": "workspace:*",
     "vitest": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*",
-    "@zyplux/util": "workspace:*",
     "vitest": "catalog:"
   }
 }

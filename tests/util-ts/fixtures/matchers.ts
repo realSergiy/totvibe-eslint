@@ -1,4 +1,4 @@
-import { registerMatchers } from '@zyplux/tests-fixtures';
+import { registerMatchers } from '@zyplux/tests-fixtures/matchers';
 import { isDeepStrictEqual } from 'node:util';
 import { ZodError } from 'zod';
 

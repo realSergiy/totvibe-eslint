@@ -196,14 +196,14 @@ def test_8_2_2_log_lines_colorized_and_tagged_per_cook(
         log_internals.LINE_SINK(line)
         return buffer.getvalue()
 
-    first = render("[2026-05-27 10:00:00] url.bun                      INFO    Installing")
-    again = render("[2026-05-27 10:00:00] url.bun                      INFO    Installing")
+    first = render("[2026-05-27 10:00:00] url.pnpm                     INFO    Installing")
+    again = render("[2026-05-27 10:00:00] url.pnpm                     INFO    Installing")
     other = render("[2026-05-27 10:00:00] apt_pkg                      INFO    Installing")
 
     ansi_codes = re.compile(r"\x1b\[[0-9;]+m")
     assert ansi_codes.findall(first) == ansi_codes.findall(again)  # stable across one cook's lines
     assert ansi_codes.findall(first) != ansi_codes.findall(other)  # distinct cooks get distinct hues
-    assert "url.bun" in first  # the runner tag is carried into the rendered line
+    assert "url.pnpm" in first  # the runner tag is carried into the rendered line
 
 
 def test_8_2_3_start_and_completion_lines_announce_waits_and_unblocks(cook_runner_internals: ModuleType) -> None:
@@ -251,15 +251,15 @@ def test_8_3_2_all_output_funnels_through_a_single_pump(tmp_path: Path, log_pump
             handle.write(line)
 
         log_pump.pump_lines(
-            ["url.bun   installing\n", "apt_pkg   updating\n", "marker\n"],
+            ["url.pnpm  installing\n", "apt_pkg   updating\n", "marker\n"],
             write_log=write_log,
             emit_terminal=emitted.append,
             drain_events=drain_events,
         )
 
-    assert log_file.read_text() == "url.bun   installing\napt_pkg   updating\n"  # one ordered writer to the file
+    assert log_file.read_text() == "url.pnpm  installing\napt_pkg   updating\n"  # one ordered writer to the file
     assert emitted == [
-        "url.bun   installing\n",
+        "url.pnpm  installing\n",
         "apt_pkg   updating\n",
     ]  # one ordered sink to the terminal — never interleaved
     assert marker_event.is_set()  # a line matching a registered marker signals its event …

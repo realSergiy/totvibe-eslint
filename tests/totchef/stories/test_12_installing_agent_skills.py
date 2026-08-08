@@ -16,25 +16,25 @@ if TYPE_CHECKING:
 def test_12_1_1_skills_installs_each_declared_repo_via_the_skills_cli(
     zyp_skills: FakeSkillsRepo, terminal: FakeTerminal, totchef: Totchef
 ) -> None:
-    """`[skills] repos = [...]` installs each repo globally for Claude Code via `bunx skills add`."""
+    """`[skills] repos = [...]` installs each repo globally for Claude Code via `pnpx skills add`."""
     zyp_skills.delivers(("totchef", "aaaa1111bbbb2222cccc3333dddd4444eeee5555"))
 
     report = totchef.up()
 
     report.assert_shows("skills.zyplux/zyp-skills/totchef", "installed")
-    terminal.expect_ran("bunx skills add zyplux/zyp-skills -g --agent claude-code universal --skill '*' -y")
+    terminal.expect_ran("pnpx skills add zyplux/zyp-skills -g --agent claude-code universal --skill '*' -y")
 
 
-def test_12_1_2_skills_requires_bun_and_bunx_and_fails_hard_pointing_at_url_bun(
+def test_12_1_2_skills_requires_pnpm_and_pnpx_and_fails_hard_pointing_at_url_pnpm(
     recipe: RecipeBuilder, totchef: Totchef
 ) -> None:
-    """If bun or bunx is missing the run fails hard, telling the operator the [url] bun install must run first."""
+    """If pnpm or pnpx is missing the run fails hard, telling the operator the [url] pnpm install must run first."""
     recipe.declares("skills", repos=["zyplux/zyp-skills"])
 
     report = totchef.up()
 
     report.assert_hard_failed()
-    report.assert_logged("[url.bun]")
+    report.assert_logged("[url.pnpm]")
 
 
 def test_12_1_3_each_skill_gets_its_own_report_row_with_version_and_content_id(
@@ -148,7 +148,7 @@ def test_12_1_7_a_failed_repo_reports_hard_naming_the_failed_repo(
 ) -> None:
     """If `skills add` fails for a repo, the run reports a hard failure naming it."""
     recipe.declares("skills", repos=["realSergiy/does-not-exist"])
-    system.has("bunx", "bun")
+    system.has("pnpx", "pnpm")
     terminal.arrange("skills add realSergiy/does-not-exist", exit_code=1)
 
     report = totchef.up()
@@ -163,7 +163,7 @@ def test_12_1_8_multiple_repos_install_concurrently(
     """Multiple declared repos install concurrently, each via its own `skills add` invocation."""
     repos: list[RecipeValue] = ["zyplux/zyp-skills", "vercel-labs/agent-skills"]
     recipe.declares("skills", repos=repos)
-    system.has("bunx", "bun")
+    system.has("pnpx", "pnpm")
     terminal.expect_concurrent(*(f"skills add {repo}" for repo in repos), parties=len(repos))
 
     report = totchef.up()
@@ -177,21 +177,21 @@ def test_12_1_9_a_cli_kind_skill_binary_is_chmod_and_linked_onto_path(
 ) -> None:
     (
         """A cli-kind skill's package.json `bin` script is chmod'd executable and """
-        """`bun link`ed from its own directory, so it resolves on PATH — on every sync, """
+        """`pnpm link`ed from its own directory, so it resolves on PATH — on every sync, """
         """even a converged one that skipped the CLI."""
     )
     zyp_skills.delivers(
         ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
         files={"peek": {"package.json": '{"bin": "peek.py"}', "peek.py": "#!/usr/bin/env python3\n"}},
     )
-    terminal.arrange("bun link")
+    terminal.arrange("pnpm link")
     zyp_skills.upstream_matches()
 
     skill_dir = home / ".agents" / "skills" / "peek"
 
     totchef.up().assert_succeeded()  # installed; the binary is chmod'd and linked alongside
-    terminal.expect_ran("bun link")
-    assert terminal.cwd_for("bun link") == skill_dir
+    terminal.expect_ran("pnpm link")
+    assert terminal.cwd_for("pnpm link") == skill_dir
     assert (
         skill_dir / "peek.py"
     ).stat().st_mode & 0o111  # git doesn't preserve the executable bit; the cook restores it

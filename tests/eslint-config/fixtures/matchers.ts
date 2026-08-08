@@ -1,7 +1,7 @@
 import type { Linter } from 'eslint';
 
 import { ParserOptionsSchema } from '@zyplux/eslint-config/contracts';
-import { registerMatchers } from '@zyplux/tests-fixtures';
+import { registerMatchers } from '@zyplux/tests-fixtures/matchers';
 import path from 'node:path';
 import { expect } from 'vitest';
 

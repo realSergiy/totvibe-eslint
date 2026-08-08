@@ -104,8 +104,8 @@ vitest smoke tests instead:
 21. [ ] `just test` deliberately skips `pytest` (comment: "Python tests and cz
     are deliberately unwired for now") — only CI runs pytest directly, so
     local `just check` can't catch a Python regression before push.
-22. [ ] CI's `knip` step runs only `bun run knip`, not the stricter
+22. [ ] CI's `knip` step runs only `pnpm run knip`, not the stricter
     `knip.prod.json` pass that `just knip` runs locally (same gap as above,
     from the CI side).
-23. [ ] CI never runs `bun run lint:mermaid`, though it's part of the local
+23. [ ] CI never runs `pnpm run lint:mermaid`, though it's part of the local
     `just lint`/`just check` chain.

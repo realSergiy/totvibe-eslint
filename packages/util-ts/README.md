@@ -1,6 +1,6 @@
 # @zyplux/util
 
-Small utilities — assertions, polling, bounded-concurrency mapping, zod-validated JSON parsing (from a string, a file, or a URL) and TOML parsing (from a string), repo-URL normalization, `package.json`/`pyproject.toml` manifest schemas, and a `git`/`gh` shell harness. Ships TypeScript source, importable from Node (and Bun, which consumes plain npm packages the same way).
+Small utilities — assertions, polling, bounded-concurrency mapping, zod-validated JSON parsing (from a string, a file, or a URL) and TOML parsing (from a string), repo-URL normalization, `package.json`/`pyproject.toml` manifest schemas, and a `git`/`gh` shell harness. Ships compiled JS with type declarations, importable from Node 26.
 
 ## Install
 

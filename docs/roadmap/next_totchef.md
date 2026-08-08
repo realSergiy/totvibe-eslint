@@ -43,7 +43,7 @@ Pre-publish checklist:
   - [ ] github readme
   - [ ] website page
 - [ ] lock bundled dep versions (such as nala) to ensure all's stable
-- [ ] support node.js (or whenever relying on bun, do so via symlinked paths)
+- [x] support node.js — the `[pnpm]` cook replaced `[bun]`, so globals install through pnpm
 
 ### 3.1 fresh machine
 

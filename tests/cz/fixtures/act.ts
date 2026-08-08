@@ -1,8 +1,11 @@
-import type { CliRunner, ConsoleCapture, FetchFake, TempDir } from '@zyplux/tests-fixtures';
+import type { CliRunner } from '@zyplux/tests-fixtures/cli';
+import type { ConsoleCapture } from '@zyplux/tests-fixtures/console';
+import type { FetchFake } from '@zyplux/tests-fixtures/fetch';
+import type { TempDir } from '@zyplux/tests-fixtures/fs';
 
 import { runCz } from '@zyplux/cz';
 import { DepsCatalogSchema } from '@zyplux/cz/contracts';
-import { createCliRunner } from '@zyplux/tests-fixtures';
+import { createCliRunner } from '@zyplux/tests-fixtures/cli';
 import { parseJson } from '@zyplux/util';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';

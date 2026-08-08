@@ -1,7 +1,7 @@
-import type { LibraryFixtures } from '@zyplux/tests-fixtures';
+import type { LibraryFixtures } from '@zyplux/tests-fixtures/story';
 import type { TestAPI } from 'vitest';
 
-import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
+import { libraryTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
 import type { PrintedConfig } from './act.ts';
 

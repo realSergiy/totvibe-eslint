@@ -2,7 +2,7 @@
 
 ## 4.1 parsing toml text against a schema
 
->`parseToml(text, schema)` runs `Bun.TOML.parse` on the text and pipes the result through a Zod schema, so callers get a fully-typed value back or an exception describing exactly what was wrong with the input.
+>`parseToml(text, schema)` runs `smol-toml`'s parser on the text and pipes the result through a Zod schema, so callers get a fully-typed value back or an exception describing exactly what was wrong with the input.
 
 1. returns the schema validated value for well formed toml
 2. throws on malformed toml syntax

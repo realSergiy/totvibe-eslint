@@ -7,16 +7,13 @@ import type { TempDir } from './fs.ts';
 import type { PromptFake } from './prompt.ts';
 import type { ShellFake } from './shell.ts';
 
+import './matchers.ts';
 import { createConsoleCapture } from './console.ts';
 import { createFetchFake } from './fetch.ts';
 import { createTempDir } from './fs.ts';
 import { createPromptFake } from './prompt.ts';
+import { requireMockedModule } from './require-mocked-module.ts';
 import { createShellFake } from './shell.ts';
-
-vi.mock('node:timers/promises', async importOriginal => {
-  const actual = await importOriginal<typeof import('node:timers/promises')>();
-  return { ...actual, setTimeout: vi.fn(actual.setTimeout) };
-});
 
 export type EnvStub = {
   set: (name: string, value: string) => void;
@@ -75,6 +72,7 @@ export const cliTest = libraryTest.extend<CliFixtures>({
   },
   instantSleep: [
     async ({}, use) => {
+      requireMockedModule(sleep, 'node:timers/promises', 'setTimeout');
       vi.mocked(sleep).mockResolvedValue(undefined);
       try {
         await use(undefined);

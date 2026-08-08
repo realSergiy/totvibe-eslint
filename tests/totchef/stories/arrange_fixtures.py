@@ -310,7 +310,7 @@ class FakeSystem:
     def has(self, *binaries: str) -> FakeSystem:
         (
             """Make each binary discoverable on PATH (and as a real installer side effect, e.g. """
-            """`effect=lambda: system.has("bun")`)."""
+            """`effect=lambda: system.has("pnpm")`)."""
         )
         for name in binaries:
             executable = self.bin_dir / name
@@ -446,12 +446,12 @@ def totchef_version() -> str:
 def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (
         """Redirect `$HOME` to a temp dir so `Path.home()`/`~` land there. Also scrub """
-        """`BUN_INSTALL`/`XDG_*_HOME`, which CI sets and production prefers."""
+        """`PNPM_HOME`/`XDG_*_HOME`, which CI sets and production prefers."""
     )
     home_dir = tmp_path / "home"
     home_dir.mkdir()
     monkeypatch.setenv("HOME", str(home_dir))
-    for leaked in ("BUN_INSTALL", "CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
+    for leaked in ("PNPM_HOME", "CLAUDE_CONFIG_DIR", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"):
         monkeypatch.delenv(leaked, raising=False)
     return home_dir
 
@@ -627,11 +627,11 @@ def zyp_skills(
     recipe: RecipeBuilder, system: FakeSystem, terminal: FakeTerminal, http: FakeHttp, home: Path
 ) -> FakeSkillsRepo:
     (
-        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and bun/bunx sit on PATH. """
+        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and pnpm/pnpx sit on PATH. """
         """Program the repo's boundary behavior on the returned FakeSkillsRepo."""
     )
     recipe.declares("skills", repos=["zyplux/zyp-skills"])
-    system.has("bunx", "bun")
+    system.has("pnpx", "pnpm")
     return FakeSkillsRepo("zyplux/zyp-skills", home, terminal, http)
 
 

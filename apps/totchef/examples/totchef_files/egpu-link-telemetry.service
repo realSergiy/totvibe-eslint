@@ -1,0 +1,15 @@
+[Unit]
+Description=Sample Thunderbolt eGPU PCIe link health into the journal
+After=multi-user.target
+
+[Service]
+Type=exec
+ExecStart=/usr/local/sbin/egpu-link-probe --interval 30
+Restart=always
+RestartSec=10
+Nice=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

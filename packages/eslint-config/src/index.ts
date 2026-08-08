@@ -11,7 +11,7 @@ import { tanstackRoutes } from './configs/tanstack.ts';
 import { testSeamRules } from './configs/test-seam.ts';
 import { typescript } from './configs/typescript.ts';
 import { unicornConfig } from './configs/unicorn.ts';
-import { testHarnessMocksConfig, vitestConfig } from './configs/vitest.ts';
+import { vitestConfig } from './configs/vitest.ts';
 import { zypluxRules } from './configs/zyplux.ts';
 
 export type { ReactRenderer, RendererGlobs } from './configs/react.ts';
@@ -80,7 +80,6 @@ const create = (options: ZypluxOptions = {}) => {
     testSeamRules,
     ...fixtureRoleConfigs(tsconfigRootDir),
     vitestConfig,
-    testHarnessMocksConfig,
     prettier,
   );
 };

@@ -5,15 +5,20 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_NO_DEV=1
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends sudo curl unzip ca-certificates \
+ && apt-get install -y --no-install-recommends sudo curl unzip ca-certificates libatomic1 \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --create-home tester \
  && echo 'tester ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/tester \
  && chmod 0440 /etc/sudoers.d/tester
 
-# bun on the system PATH; the [bun] cook resolves it via find_binary and must drive
-# its globals into the user's ~/.bun, not the cache dir bun defaults to (§4.3.3).
-RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash
+# pnpm on the system PATH; the [pnpm] cook resolves it via find_binary and must drive its
+# globals into the user's ~/.local/share/pnpm, not an inherited data dir (§4.3.3). The
+# standalone build is a self-contained ELF (no Node needed) and links against libatomic.
+ARG PNPM_VERSION=11.13.1
+RUN mkdir -p /opt/pnpm \
+ && curl -fsSL "https://github.com/pnpm/pnpm/releases/download/v${PNPM_VERSION}/pnpm-linux-x64.tar.gz" \
+    | tar -xz -C /opt/pnpm \
+ && ln -s /opt/pnpm/pnpm /usr/local/bin/pnpm
 
 WORKDIR /src
 

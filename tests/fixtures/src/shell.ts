@@ -1,47 +1,11 @@
-import type { $ } from '@zyplux/util';
+import type { SpawnOptions } from 'node:child_process';
 
-import { run } from '@zyplux/util/exec';
+import { ChildProcess, spawn } from 'node:child_process';
+import { PassThrough, Writable } from 'node:stream';
 import { vi } from 'vitest';
 
 import { isPatternMatch } from './pattern-match.ts';
-
-vi.mock('@zyplux/util/exec', async importOriginal => {
-  const actual = await importOriginal<typeof import('@zyplux/util/exec')>();
-  return { ...actual, run: vi.fn(actual.run) };
-});
-
-type ShellOutput = Awaited<ReturnType<typeof $.git.status>>;
-type ShellPromise = ReturnType<typeof run>;
-
-export const fakeShellOutput = (stdout: string, exitCode = 0): ShellOutput => ({
-  exitCode,
-  stderr: Buffer.alloc(0),
-  stdout: Buffer.from(stdout),
-  text: () => stdout,
-});
-
-type ShellPromiseHooks = {
-  onCwd?: (dir: string) => void;
-  onEnv?: (env: Record<string, string | undefined>) => void;
-};
-
-export const fakeShellPromise = (result: ShellOutput, { onCwd, onEnv }: ShellPromiseHooks = {}): ShellPromise => {
-  const chainMethod = () => promise;
-  const promise: ShellPromise = Object.assign(Promise.resolve(result), {
-    cwd: (dir?: string) => {
-      if (dir !== undefined) onCwd?.(dir);
-      return promise;
-    },
-    env: (newEnv?: Record<string, string | undefined>) => {
-      if (newEnv !== undefined) onEnv?.(newEnv);
-      return promise;
-    },
-    nothrow: chainMethod,
-    quiet: chainMethod,
-    text: (encoding?: BufferEncoding) => Promise.resolve(result.text(encoding)),
-  }) satisfies ShellPromise;
-  return promise;
-};
+import { requireMockedModule } from './require-mocked-module.ts';
 
 export type ShellCall = {
   argv: string[];
@@ -50,6 +14,7 @@ export type ShellCall = {
   program: string;
   stdin?: string;
 };
+
 export type ShellFake = {
   calls: ShellCall[];
   commands: string[];
@@ -62,6 +27,8 @@ export type ShellFake = {
 export type ShellReply = ((command: string) => string) | string | { exitCode: number; stdout: string };
 
 type ShellRoute = { pattern: RegExp | string; replies: ShellReply[] };
+
+type SpawnedReply = { exitCode: number; stdout: string };
 
 const isCommandMatch = (command: string, pattern: RegExp | string) => {
   if (typeof pattern === 'string') {
@@ -77,6 +44,57 @@ const takeReply = ({ replies }: ShellRoute) => {
   return reply;
 };
 
+const envOverlay = (env: NodeJS.ProcessEnv = {}) => {
+  const overlaid = Object.entries(env).filter(
+    ([name, value]) => !Object.hasOwn(process.env, name) || process.env[name] !== value,
+  );
+  return overlaid.length === 0 ? undefined : Object.fromEntries(overlaid);
+};
+
+const createFakeChild = ({ exitCode, stdout: output }: SpawnedReply, onStdin: (text: string) => void) => {
+  const stdout = new PassThrough();
+  const stderr = new PassThrough();
+  const written: Buffer[] = [];
+  const stdin = new Writable({
+    final: done => {
+      onStdin(Buffer.concat(written).toString());
+      done();
+    },
+    write: (chunk: Buffer, _encoding, done) => {
+      written.push(Buffer.from(chunk));
+      done();
+    },
+  });
+  const child = Object.assign(new ChildProcess(), { stderr, stdin, stdout });
+
+  let flowing = 2;
+  const closeWhenDrained = () => {
+    flowing -= 1;
+    if (flowing === 0) child.emit('close', exitCode);
+  };
+  stdout.on('end', closeWhenDrained);
+  stderr.on('end', closeWhenDrained);
+
+  queueMicrotask(() => {
+    stdout.end(output);
+    stderr.end();
+    stdout.resume();
+    stderr.resume();
+  });
+
+  return child;
+};
+
+const silenceStandardStreams = () => {
+  const silenced = [
+    vi.spyOn(process.stdout, 'write').mockReturnValue(true),
+    vi.spyOn(process.stderr, 'write').mockReturnValue(true),
+  ];
+  return () => {
+    for (const stream of silenced) stream.mockRestore();
+  };
+};
+
 export const createShellFake = (): ShellFake => {
   const calls: ShellCall[] = [];
   const commands: string[] = [];
@@ -89,7 +107,26 @@ export const createShellFake = (): ShellFake => {
       const registered = routes.map(known => `  ${String(known.pattern)}`).join('\n');
       throw new Error(`no shell route matches: ${command}\nregistered routes:\n${registered}`);
     }
-    return takeReply(route);
+    const reply = takeReply(route);
+    const resolved = typeof reply === 'function' ? reply(command) : reply;
+    return typeof resolved === 'string' ? { exitCode: 0, stdout: resolved } : resolved;
+  };
+
+  const spawnFake = (program: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
+    const argv = [...args];
+    const command = [program, ...argv].join(' ');
+    const overlay = envOverlay(options.env);
+    const call: ShellCall = {
+      argv,
+      program,
+      ...(typeof options.cwd === 'string' && { cwd: options.cwd }),
+      ...(overlay !== undefined && { env: overlay }),
+    };
+    calls.push(call);
+    commands.push(command);
+    return createFakeChild(resolveReply(command), text => {
+      call.stdin = text;
+    });
   };
 
   return {
@@ -97,36 +134,13 @@ export const createShellFake = (): ShellFake => {
     commands,
     commandsMatching: pattern => commands.filter(command => isCommandMatch(command, pattern)),
     install: () => {
-      const runMock = vi.mocked(run);
-      runMock.mockImplementation((argv, opts) => {
-        const command = argv.join(' ');
-        const [program = '', ...args] = argv;
-        const call: ShellCall = {
-          argv: args,
-          program,
-          ...(opts?.cwd !== undefined && { cwd: opts.cwd }),
-          ...(opts?.env !== undefined && { env: opts.env }),
-          ...(opts?.stdin !== undefined && { stdin: String(opts.stdin) }),
-        };
-        calls.push(call);
-        commands.push(command);
-        const reply = resolveReply(command);
-        const resolved = typeof reply === 'function' ? reply(command) : reply;
-        const output =
-          typeof resolved === 'string'
-            ? fakeShellOutput(resolved)
-            : fakeShellOutput(resolved.stdout, resolved.exitCode);
-        return fakeShellPromise(output, {
-          onCwd: dir => {
-            call.cwd = dir;
-          },
-          onEnv: env => {
-            call.env = env;
-          },
-        });
-      });
+      requireMockedModule(spawn, 'node:child_process', 'spawn');
+      const spawnMock = vi.mocked(spawn);
+      spawnMock.mockImplementation(spawnFake);
+      const restoreStreams = silenceStandardStreams();
       return () => {
-        runMock.mockReset();
+        restoreStreams();
+        spawnMock.mockReset();
       };
     },
     on: (pattern, ...replies) => {

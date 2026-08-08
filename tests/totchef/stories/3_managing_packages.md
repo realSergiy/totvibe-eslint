@@ -58,7 +58,7 @@ clear message.
 ## 3.3 Bootstrap vendor CLIs from their official installers
 
 > As an operator, I want to install vendor tools from their `curl | bash` install
-> scripts and keep them updated, so that tools like `bun`, `uv`, `rustup`, or
+> scripts and keep them updated, so that tools like `pnpm`, `uv`, `rustup`, or
 > `claude` are managed declaratively instead of by hand.
 
 ### 3.3.1 url fetches installer pipes to bash diffs presence
@@ -97,8 +97,8 @@ still works, reporting the tool as simply `present`.
 
 ### 3.3.7 url scheme defaults to https
 
-A `url` without a scheme means https — `url = "bun.sh/install"` fetches
-`https://bun.sh/install`. An explicit scheme passes through unchanged.
+A `url` without a scheme means https — `url = "get.pnpm.io/install.sh"` fetches
+`https://get.pnpm.io/install.sh`. An explicit scheme passes through unchanged.
 
 ### 3.3.8 installers run from home so relative bindirs resolve
 

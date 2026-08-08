@@ -1,4 +1,4 @@
-import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
+import { libraryTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
 import type { Subjects } from './act.ts';
 
@@ -27,11 +27,12 @@ export const test = libraryTest.extend<ArrangeFixtures & Subjects>({
   pythonRequirementNames: makeFixture(subjects.pythonRequirementNames),
   readTrimmed: makeFixture(subjects.readTrimmed),
   repositoryUrl: makeFixture(subjects.repositoryUrl),
+  run: makeFixture(subjects.run),
   tryParseToml: makeFixture(subjects.tryParseToml),
   workspaceRoot,
 });
 
 export type { Shell } from './act.ts';
 export type { TomlOutcome } from './matchers.ts';
-export type { ShellFake } from '@zyplux/tests-fixtures';
+export type { ShellFake } from '@zyplux/tests-fixtures/shell';
 export { describe, expect } from 'vitest';

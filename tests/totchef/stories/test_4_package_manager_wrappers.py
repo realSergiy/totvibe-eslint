@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from act_fixtures import Totchef
     from arrange_fixtures import FakeHttp, FakeSystem, FakeTerminal, RecipeBuilder
@@ -174,126 +173,88 @@ def test_4_2_3_uv_requires_uv_and_looks_up_latest_from_pypi(
     report.assert_logged("[url]")
 
 
-# 4.3 Install and upgrade global bun packages
+# 4.3 Install and upgrade global pnpm packages
 
 
 PI = "@earendil-works/pi-coding-agent"
 
 
-def _bun_global(home: Path, name: str, version: str) -> Callable[[], None]:
+def _global_list(*installed: tuple[str, str]) -> str:
     (
-        """An effect that simulates `bun add -g` landing `name` in bun's global tree at """
-        """`version`, so the cook's filesystem re-probe sees it installed."""
+        """What `pnpm list -g --depth 0 --json` prints for `installed` — the only reliable reader of """
+        """pnpm's global tree, whose on-disk layout is a content-hashed directory."""
     )
-    pkg_dir = home / ".bun/install/global/node_modules" / name
-
-    def install() -> None:
-        pkg_dir.mkdir(parents=True, exist_ok=True)
-        (pkg_dir / "package.json").write_text('{"version": "' + version + '"}')
-
-    return install
+    entries = ", ".join(f'"{name}": {{"version": "{version}"}}' for name, version in installed)
+    return '[{"dependencies": {' + entries + "}}]"
 
 
-def test_4_3_1_bun_installs_and_upgrades_each_global_package(
+def test_4_3_1_pnpm_installs_and_upgrades_each_global_package(
     recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
 ) -> None:
     (
-        """`[bun]` installs missing globals and upgrades drifted ones via a single batched """
-        """`bun add -g`; installed versions are read from bun's global tree."""
+        """`[pnpm]` installs missing globals and upgrades drifted ones via a single batched """
+        """`pnpm add -g`; installed versions are read from pnpm's global tree."""
     )
-    home = totchef.workdir / "home"
-    recipe.declares("bun", packages=[PI, "left-pad"])
-    system.has("bun")
+    recipe.declares("pnpm", packages=[PI, "left-pad"])
+    system.has("pnpm")
     http.arrange("registry.npmjs.org/" + PI, '{"dist-tags": {"latest": "0.75.5"}}')
     http.arrange("registry.npmjs.org/left-pad", '{"dist-tags": {"latest": "1.3.0"}}')
-    _bun_global(home, "left-pad", "1.2.0")()  # left-pad already installed at an older version → upgrade
+    # left-pad already installed at an older version → upgrade; PI absent → install
+    terminal.arrange("pnpm list -g", _global_list(("left-pad", "1.2.0")))
 
-    def _land_bun_globals() -> None:
-        _bun_global(home, PI, "0.75.5")()
-        _bun_global(home, "left-pad", "1.3.0")()
+    def _land_pnpm_globals() -> None:
+        terminal.arrange("pnpm list -g", _global_list((PI, "0.75.5"), ("left-pad", "1.3.0")))
 
-    terminal.arrange("bun add -g", effect=_land_bun_globals)
+    terminal.arrange("pnpm add -g", effect=_land_pnpm_globals)
 
     report = totchef.up()
 
     report.assert_succeeded()
-    report.assert_shows("bun." + PI, "installed")  # absent → installed
-    report.assert_shows("bun.left-pad", "upgraded")  # drifted → upgraded
-    terminal.expect_ran("bun add -g --ignore-scripts " + PI + " left-pad")  # one batched command for both
+    report.assert_shows("pnpm." + PI, "installed")  # absent → installed
+    report.assert_shows("pnpm.left-pad", "upgraded")  # drifted → upgraded
+    terminal.expect_ran("pnpm add -g --ignore-scripts " + PI + " left-pad")  # one batched command for both
 
 
-def test_4_3_2_bun_requires_bun_and_looks_up_latest_from_the_npm_registry(
+def test_4_3_2_pnpm_requires_pnpm_and_looks_up_latest_from_the_npm_registry(
     recipe: RecipeBuilder, http: FakeHttp, totchef: Totchef
 ) -> None:
     (
-        """Requires bun present (depends on the [url] bun installer); latest versions are """
+        """Requires pnpm present (depends on the [url] pnpm installer); latest versions are """
         """looked up concurrently from the npm registry."""
     )
-    recipe.declares("bun", packages=[PI, "left-pad"])
+    recipe.declares("pnpm", packages=[PI, "left-pad"])
     http.arrange("registry.npmjs.org/" + PI, '{"dist-tags": {"latest": "0.75.5"}}')
     http.arrange("registry.npmjs.org/left-pad", '{"dist-tags": {"latest": "1.3.0"}}')
     http.expect_concurrent(parties=PAIRED_PARTIES)  # both npm lookups must overlap, not serialize
 
     plan = totchef.plan()
 
-    plan.assert_shows("bun." + PI, "would install")
+    plan.assert_shows("pnpm." + PI, "would install")
     http.expect_fetched("registry.npmjs.org/left-pad")
     assert http.max_concurrent_requests == PAIRED_PARTIES  # the two npm fetches ran concurrently for the plan
 
-    report = totchef.up()  # bun isn't installed → hard fail pointing at [url]
+    report = totchef.up()  # pnpm isn't installed → hard fail pointing at [url]
 
     report.assert_hard_failed()
     report.assert_logged("[url]")
 
 
-def test_4_3_3_bun_installs_globals_into_bun_home_not_the_cache_dir(
-    apply_in_container: Callable[[str, list[str]], ContainerRun],
+def test_4_3_3_pnpm_installs_globals_into_pnpm_home_not_an_inherited_data_dir(
+    apply_in_container: Callable[[str, list[str], dict[str, str] | None, dict[str, str] | None], ContainerRun],
 ) -> None:
     (
-        """The cook pins `BUN_INSTALL` to bun's home, so a global lands in `~/.bun` (on PATH) """
-        """and never the `$XDG_CACHE_HOME/.bun` dir bun would otherwise pick under the """
-        """privilege drop. In a container."""
+        """pnpm reads its global root from `$XDG_DATA_HOME` when left to itself, so a variable """
+        """inherited from the pre-drop environment would strand globals outside the operator's """
+        """home. The cook pins `PNPM_HOME` (and its bin dir on PATH) instead. In a container."""
     )
     run = apply_in_container(
-        '[bun]\npackages = ["left-pad"]\n',
-        [
-            "/home/tester/.bun/install/global/node_modules/left-pad",
-            "/home/tester/.cache/.bun/install/global/node_modules/left-pad",
-        ],
+        '[pnpm]\npackages = ["left-pad"]\n',
+        ["/home/tester/.local/share/pnpm/global", "/home/tester/inherited-data/pnpm"],
+        None,
+        {"XDG_DATA_HOME": "/home/tester/inherited-data"},
     )
 
-    assert run.owners["/home/tester/.bun/install/global/node_modules/left-pad"] == "tester", (
+    assert run.owners["/home/tester/.local/share/pnpm/global"] == "tester", (
         run.transcript
-    )  # landed where PATH sees it
-    assert run.owners["/home/tester/.cache/.bun/install/global/node_modules/left-pad"] is None, (
-        run.transcript
-    )  # never the cache dir
-
-
-def test_4_3_4_bun_links_node_to_its_runtime_so_node_shebang_globals_run(
-    recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
-) -> None:
-    (
-        """A node CLI's `#!/usr/bin/env node` shebang (left intact by `bun add -g`) needs a """
-        """`node` on PATH; the cook drops a `node` symlink to bun in bun's bin dir so it """
-        """resolves and runs node-compatibly. Best-effort and idempotent — it runs every """
-        """sync, so a converged re-run with nothing to install still restores the runtime """
-        """if removed."""
-    )
-    home = totchef.workdir / "home"
-    recipe.declares("bun", packages=[PI])
-    system.has("bun")
-    http.arrange("registry.npmjs.org/" + PI, '{"dist-tags": {"latest": "0.75.5"}}')
-    terminal.arrange("bun add -g", effect=_bun_global(home, PI, "0.75.5"))
-
-    node = home / ".bun/bin/node"
-    bun = system.bin_dir / "bun"
-
-    totchef.up().assert_succeeded()  # absent → installed; the node runtime is linked alongside
-    assert node.is_symlink()
-    assert node.resolve() == bun.resolve()
-
-    node.unlink()  # runtime removed out of band
-    totchef.up().assert_succeeded()  # converged: nothing to install, yet the runtime is restored
-    assert node.is_symlink()
-    assert node.resolve() == bun.resolve()
+    )  # landed in the operator's own pnpm home
+    assert run.owners["/home/tester/inherited-data/pnpm"] is None, run.transcript  # never the inherited data dir

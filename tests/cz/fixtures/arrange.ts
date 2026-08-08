@@ -1,7 +1,9 @@
-import type { FetchFake, ShellFake, TempDir } from '@zyplux/tests-fixtures';
+import type { FetchFake } from '@zyplux/tests-fixtures/fetch';
+import type { TempDir } from '@zyplux/tests-fixtures/fs';
+import type { ShellFake } from '@zyplux/tests-fixtures/shell';
 
 import { ManifestSchema } from '@zyplux/cz/contracts';
-import { notFoundResponse, okResponse } from '@zyplux/tests-fixtures';
+import { notFoundResponse, okResponse } from '@zyplux/tests-fixtures/fetch';
 import { parseToml } from '@zyplux/util';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';

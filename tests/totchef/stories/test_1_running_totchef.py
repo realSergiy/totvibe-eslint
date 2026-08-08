@@ -347,7 +347,6 @@ def test_1_4_1_cooks_lists_section_scope_and_origin(cli: Cli) -> None:
           apt_pkg,root,built-in
           apt_repo,root,built-in
           bash,user,built-in
-          bun,user,built-in
           cargo,user,built-in
           chromium_flags,user,built-in
           conf,user,built-in
@@ -355,6 +354,7 @@ def test_1_4_1_cooks_lists_section_scope_and_origin(cli: Cli) -> None:
           file,user,built-in
           local_bin,user,built-in
           local_bin_dir,user,built-in
+          pnpm,user,built-in
           settings,user,built-in
           skills,user,built-in
           snap,root,built-in

@@ -183,21 +183,21 @@ def test_3_3_1_url_fetches_installer_pipes_to_bash_diffs_presence(
     recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
 ) -> None:
     """`[url.<name>]` fetches an installer URL and pipes it to bash; presence (not version) is diffed."""
-    recipe.declares("url", "bun", url="https://bun.sh/install")
-    http.arrange("bun.sh/install", "#!/bin/bash\necho installing bun")
+    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
+    http.arrange("get.pnpm.io/install.sh", "#!/bin/bash\necho installing pnpm")
 
-    def install_bun() -> None:
-        system.has("bun")
+    def install_pnpm() -> None:
+        system.has("pnpm")
 
-    terminal.arrange("bash -s --", effect=install_bun)
-    terminal.arrange("bun --version", "1.1.0")
+    terminal.arrange("bash -s --", effect=install_pnpm)
+    terminal.arrange("pnpm --version", "11.13.1")
 
     report = totchef.up()
 
-    report.assert_shows("url.bun", "installed")
-    http.expect_fetched("bun.sh/install")
+    report.assert_shows("url.pnpm", "installed")
+    http.expect_fetched("get.pnpm.io/install.sh")
     terminal.expect_ran("bash -s --")
-    assert terminal.stdin_for("bash -s --") == b"#!/bin/bash\necho installing bun"
+    assert terminal.stdin_for("bash -s --") == b"#!/bin/bash\necho installing pnpm"
 
 
 def test_3_3_2_binary_name_defaults_to_entry_name_overridable_with_bin(
@@ -230,32 +230,32 @@ def test_3_3_3_update_action_arg_list_rerun_installer_or_absent(
         """update_action: an arg list run against the binary, "rerun-installer", or absent; """
         """an empty arg list is none of these and is rejected at lint, before anything runs."""
     )
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
-    http.arrange("bun.sh/install", "#!/bin/bash")
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
+    http.arrange("get.pnpm.io/install.sh", "#!/bin/bash")
 
-    arg_list = scenario().declares("url", "bun", url="https://bun.sh/install", update_action=["upgrade"])
+    arg_list = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh", update_action=["self-update"])
     chef(arg_list).up().assert_succeeded()
-    terminal.expect_ran("bun upgrade")
+    terminal.expect_ran("pnpm self-update")
     terminal.expect_not_ran("bash -s --")
 
     terminal.reset()
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
-    http.arrange("bun.sh/install", "#!/bin/bash")
-    rerun = scenario().declares("url", "bun", url="https://bun.sh/install", update_action="rerun-installer")
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
+    http.arrange("get.pnpm.io/install.sh", "#!/bin/bash")
+    rerun = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh", update_action="rerun-installer")
     chef(rerun).up().assert_succeeded()
     terminal.expect_ran("bash -s --")
 
     terminal.reset()
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
-    absent = scenario().declares("url", "bun", url="https://bun.sh/install")
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
+    absent = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
     chef(absent).up().assert_succeeded()
     terminal.expect_not_ran("bash -s --")
-    terminal.expect_not_ran("bun upgrade")
+    terminal.expect_not_ran("pnpm self-update")
 
-    empty_list = scenario().declares("url", "bun", url="https://bun.sh/install", update_action=[])
+    empty_list = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh", update_action=[])
     chef(empty_list).up().assert_rejected("update_action")
 
 
@@ -264,19 +264,23 @@ def test_3_3_4_update_guard_runs_before_updating(
 ) -> None:
     """An optional update_guard shell snippet runs before updating."""
     recipe.declares(
-        "url", "bun", url="https://bun.sh/install", update_action=["upgrade"], update_guard="pkill -f bun-server"
+        "url",
+        "pnpm",
+        url="https://get.pnpm.io/install.sh",
+        update_action=["self-update"],
+        update_guard="pkill -f pnpm-store-server",
     )
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
 
     report = totchef.up()
 
     report.assert_succeeded()
-    terminal.expect_ran("pkill -f bun-server")
-    terminal.expect_ran("bun upgrade")
+    terminal.expect_ran("pkill -f pnpm-store-server")
+    terminal.expect_ran("pnpm self-update")
     order = [command.line for command in terminal.commands]
-    guarded = next(i for i, line in enumerate(order) if "pkill -f bun-server" in line)
-    updated = next(i for i, line in enumerate(order) if "bun upgrade" in line)
+    guarded = next(i for i, line in enumerate(order) if "pkill -f pnpm-store-server" in line)
+    updated = next(i for i, line in enumerate(order) if "pnpm self-update" in line)
     assert guarded < updated  # the guard quiesced the server before the binary was replaced
 
 
@@ -288,9 +292,9 @@ def test_3_3_5_url_install_failure_hard_update_failure_soft(
     system: FakeSystem,
 ) -> None:
     """Install failure is hard, update failure is soft (the tool stays installed)."""
-    http.arrange("bun.sh/install", "#!/bin/bash")
+    http.arrange("get.pnpm.io/install.sh", "#!/bin/bash")
     terminal.arrange("bash -s --", exit_code=1)
-    install = scenario().declares("url", "bun", url="https://bun.sh/install")
+    install = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
 
     hard = chef(install).up()
 
@@ -298,10 +302,10 @@ def test_3_3_5_url_install_failure_hard_update_failure_soft(
     hard.assert_logged("install failed")
 
     terminal.reset()
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
-    terminal.arrange("bun upgrade", exit_code=1)
-    update = scenario().declares("url", "bun", url="https://bun.sh/install", update_action=["upgrade"])
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
+    terminal.arrange("pnpm self-update", exit_code=1)
+    update = scenario().declares("url", "pnpm", url="https://get.pnpm.io/install.sh", update_action=["self-update"])
 
     soft = chef(update).up()
 
@@ -313,36 +317,36 @@ def test_3_3_6_version_best_effort_parsed_falls_back_to_present(
     recipe: RecipeBuilder, terminal: FakeTerminal, totchef: Totchef, system: FakeSystem
 ) -> None:
     """Version is best-effort parsed from --version; unparseable reports `present`."""
-    recipe.declares("url", "bun", url="https://bun.sh/install")
-    system.has("bun")
-    terminal.arrange("bun --version", "bun: a fast runtime")
+    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "pnpm: a fast package manager")
 
     plan = totchef.plan()
 
-    plan.assert_shows("url.bun", "would sync")
+    plan.assert_shows("url.pnpm", "would sync")
     assert "present" in next(
-        line for line in plan.report.splitlines() if "url.bun" in line
+        line for line in plan.report.splitlines() if "url.pnpm" in line
     )  # version parsed best-effort
 
-    totchef.up().assert_shows("url.bun", "unchanged")  # and an actual run sees it's already present
+    totchef.up().assert_shows("url.pnpm", "unchanged")  # and an actual run sees it's already present
 
 
 def test_3_3_7_url_scheme_defaults_to_https(
     recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
 ) -> None:
-    """`url = "bun.sh/install"` fetches https://bun.sh/install; an explicit scheme passes through."""
-    recipe.declares("url", "bun", url="bun.sh/install")
-    http.arrange("https://bun.sh/install", "#!/bin/bash")
+    """`url = "get.pnpm.io/install.sh"` fetches https://get.pnpm.io/install.sh; a scheme passes through."""
+    recipe.declares("url", "pnpm", url="get.pnpm.io/install.sh")
+    http.arrange("https://get.pnpm.io/install.sh", "#!/bin/bash")
 
-    def install_bun() -> None:
-        system.has("bun")
+    def install_pnpm() -> None:
+        system.has("pnpm")
 
-    terminal.arrange("bash -s --", effect=install_bun)
-    terminal.arrange("bun --version", "1.1.0")
+    terminal.arrange("bash -s --", effect=install_pnpm)
+    terminal.arrange("pnpm --version", "11.13.1")
 
-    totchef.up().assert_shows("url.bun", "installed")
+    totchef.up().assert_shows("url.pnpm", "installed")
 
-    http.expect_fetched("https://bun.sh/install")
+    http.expect_fetched("https://get.pnpm.io/install.sh")
 
 
 def test_3_3_8_installers_run_from_home_so_relative_bindirs_resolve(
@@ -353,16 +357,16 @@ def test_3_3_8_installers_run_from_home_so_relative_bindirs_resolve(
         """defaults to a *relative* bin dir (chezmoi's `.local/bin`) lands under $HOME where """
         """`find_binary` looks — not in whatever directory totchef was invoked from."""
     )
-    recipe.declares("url", "bun", url="https://bun.sh/install")
-    http.arrange("bun.sh/install", "#!/bin/bash")
+    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
+    http.arrange("get.pnpm.io/install.sh", "#!/bin/bash")
 
-    def install_bun() -> None:
-        system.has("bun")
+    def install_pnpm() -> None:
+        system.has("pnpm")
 
-    terminal.arrange("bash -s --", effect=install_bun)
-    terminal.arrange("bun --version", "1.1.0")
+    terminal.arrange("bash -s --", effect=install_pnpm)
+    terminal.arrange("pnpm --version", "11.13.1")
 
-    totchef.up().assert_shows("url.bun", "installed")
+    totchef.up().assert_shows("url.pnpm", "installed")
 
     assert terminal.cwd_for("bash -s --") == totchef.workdir / "home"  # piped to bash from $HOME, not the repo dir
 
@@ -387,10 +391,10 @@ def test_3_3_10_url_update_exec_failure_is_also_a_soft_failure(
         msg = "exec failed"
         raise OSError(msg)
 
-    system.has("bun")
-    terminal.arrange("bun --version", "1.1.0")
-    terminal.arrange("bun upgrade", effect=_raise_exec_failure)
-    recipe.declares("url", "bun", url="https://bun.sh/install", update_action=["upgrade"])
+    system.has("pnpm")
+    terminal.arrange("pnpm --version", "11.13.1")
+    terminal.arrange("pnpm self-update", effect=_raise_exec_failure)
+    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh", update_action=["self-update"])
 
     report = totchef.up()
 

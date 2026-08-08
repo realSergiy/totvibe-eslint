@@ -51,7 +51,7 @@ def _scan_roots(repo: Repo, ctx: Context) -> list[Path]:
     return sorted(members) if members else [repo_root]
 
 
-def _selection_argv(repo: Repo, ctx: Context) -> list[str]:
+def _selection_argv(ctx: Context) -> list[str]:
     return [
         "pnpx",
         tool_pins.format_spec("jscpd"),
@@ -110,7 +110,7 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
         return res
     with tempfile.TemporaryDirectory(prefix="cerberus-jscpd-") as report_dir:
         argv = [
-            *_selection_argv(repo, ctx),
+            *_selection_argv(ctx),
             "--reporters",
             "json",
             "--silent",
@@ -125,7 +125,7 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
             res.error(str(exc))
             return res
         if outcome.returncode != 0:
-            rerun_hint = " ".join([*_selection_argv(repo, ctx), *scan_roots])
+            rerun_hint = " ".join([*_selection_argv(ctx), *scan_roots])
             res.fail(f"jscpd exited {outcome.returncode}; run `{rerun_hint}` locally for details")
             return res
         report = _load_report(Path(report_dir))

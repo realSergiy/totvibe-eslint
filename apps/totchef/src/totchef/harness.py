@@ -109,6 +109,7 @@ def bootstrap_bin_dirs() -> tuple[Path, ...]:
     return (
         home / ".cargo/bin",
         home / ".local/share/pnpm",
+        home / ".local/share/pnpm/bin",
         home / ".local/bin",
         home / ".claude/local",
     )

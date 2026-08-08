@@ -271,12 +271,10 @@ def test_29_5_1_shields_fallow_behind_a_cerberus_owned_config_ignoring_workspace
     (repo_root / "apps" / "web" / "package.json").write_text('{"name": "web"}')
     (repo_root / "tests" / "py").mkdir(parents=True)
 
-    run_fallow(
-        {
-            "package.json": json.dumps({"name": "demo"}),
-            "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tests/*\n",
-        }
-    )
+    run_fallow({
+        "package.json": json.dumps({"name": "demo"}),
+        "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - tests/*\n",
+    })
 
     expected_config = {"ignorePatterns": ["apps/py", "tests/py"], "duplicates": {"ignoreDefaults": False}}
     assert [json.loads(snapshot) for snapshot in fake_proc.config_snapshots] == [expected_config, expected_config]

@@ -2,10 +2,7 @@ import { createInterface, Interface } from 'node:readline/promises';
 import { PassThrough } from 'node:stream';
 import { vi } from 'vitest';
 
-vi.mock('node:readline/promises', async importOriginal => {
-  const actual = await importOriginal<typeof import('node:readline/promises')>();
-  return { ...actual, createInterface: vi.fn(actual.createInterface) };
-});
+import { requireMockedModule } from './require-mocked-module.ts';
 
 export type PromptFake = {
   install: () => () => void;
@@ -32,6 +29,7 @@ export const createPromptFake = (): PromptFake => {
 
   return {
     install: () => {
+      requireMockedModule(createInterface, 'node:readline/promises', 'createInterface');
       createInterfaceMock.mockImplementation(() => new PromptProbe(messages));
       return () => {
         createInterfaceMock.mockReset();

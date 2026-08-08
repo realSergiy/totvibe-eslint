@@ -1,7 +1,7 @@
 # 4. [Language package-manager wrappers](test_4_package_manager_wrappers.py)
 
 These cooks wrap a language ecosystem's own package manager — `cargo` for Rust,
-`uv` for Python, `bun` for global npm CLIs — installing tools into the invoking
+`uv` for Python, `pnpm` for global npm CLIs — installing tools into the invoking
 user's home and keeping them current. Each needs its runtime present first (via the
 matching `[url]` installer) and looks up latest versions from the ecosystem's
 registry.
@@ -58,35 +58,27 @@ If any tool fails, the run reports a hard failure naming the failed tools.
 Requires `uv` to be present (depends on the `[url]` uv installer); latest
 versions are looked up concurrently from PyPI for the plan.
 
-## 4.3 Install and upgrade global bun packages
+## 4.3 Install and upgrade global pnpm packages
 
 > As an operator, I want to declare global npm CLI tools and have them installed
-> and kept current with `bun`, so that tools like a coding agent are managed
+> and kept current with `pnpm`, so that tools like a coding agent are managed
 > declaratively alongside my other packages.
 
-### 4.3.1 bun installs and upgrades each global package
+### 4.3.1 pnpm installs and upgrades each global package
 
-`[bun] packages = [...]` installs missing globals and upgrades drifted ones with a
-single batched `bun add -g`; installed versions are read from bun's global tree.
+`[pnpm] packages = [...]` installs missing globals and upgrades drifted ones with a
+single batched `pnpm add -g`; installed versions are read from pnpm's global tree.
 
-### 4.3.2 bun requires bun and looks up latest from the npm registry
+### 4.3.2 pnpm requires pnpm and looks up latest from the npm registry
 
-Requires `bun` to be present (depends on the `[url]` bun installer); if missing the
-run fails hard pointing at the `[url]` bun install. Latest versions are looked up
+Requires `pnpm` to be present (depends on the `[url]` pnpm installer); if missing the
+run fails hard pointing at the `[url]` pnpm install. Latest versions are looked up
 concurrently from the npm registry for the plan.
 
-### 4.3.3 bun installs globals into bun home not the cache dir
+### 4.3.3 pnpm installs globals into pnpm home not an inherited data dir
 
-The cook pins `BUN_INSTALL` to bun's home directory before installing, so a global
-binary lands in `~/.bun/bin` — on the user's PATH — rather than the
-`$XDG_CACHE_HOME/.bun` location bun would otherwise pick once the run has dropped
-privilege. Verified end-to-end in a container.
-
-### 4.3.4 bun links node to its runtime so node shebang globals run
-
-A node CLI's `#!/usr/bin/env node` shebang is left intact by `bun add -g`, so on a
-bun-only machine the installed tool would fail with `env: 'node': No such file or
-directory`. The cook drops a `node` symlink to bun in bun's bin dir, so the shebang
-resolves and bun runs the CLI in node-compatibility mode. It is best-effort and
-idempotent — it never clobbers a real `node`, and runs on every sync, so a
-converged re-run with nothing to install still restores the runtime if it was removed.
+Left to itself pnpm roots its global tree at `$XDG_DATA_HOME/pnpm`, so a variable
+inherited from the pre-drop environment would strand globals outside the operator's
+home. The cook pins `PNPM_HOME` and puts its bin dir on PATH before any global
+command, so the tree lands in `~/.local/share/pnpm` — where the operator's shell
+finds it. Verified end-to-end in a container.

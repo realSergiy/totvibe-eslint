@@ -1,6 +1,6 @@
 # clipy
 
-Personal typer-based CLI tools that totchef installs from this local checkout — never published to PyPI.
+Personal typer-based CLI tools that totchef installs from this local checkout.
 
 - `ctop` — live top-like CPU view of the VS Code process trees.
 - `justpty` — runs a `just` recipe under a PTY, teeing output to a per-run log; this repo's own `./just` is a symlink to it.

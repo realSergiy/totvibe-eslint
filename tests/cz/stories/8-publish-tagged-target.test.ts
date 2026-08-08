@@ -22,19 +22,20 @@ describe('8.1 skipping an already-published target', () => {
 });
 
 describe('8.2 publishing to each registry kind', () => {
-  test('8.2.1 packs and publishes an npm target', async ({ cz, registries, shell, targets }) => {
+  test('8.2.1 packs and publishes an npm target', async ({
+    cz,
+    expectNpmPackAndPublish,
+    registries,
+    shell,
+    targets,
+  }) => {
     registries.setPublished({ npmPublished: false });
     shell.on(/pnpm pack/, '');
     shell.on(/npm publish/, '');
 
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
-    expect(shell.calls).toContainEqual({ argv: ['pack'], cwd: targets.util.dir, program: 'pnpm' });
-    expect(shell.calls).toContainEqual({
-      argv: ['publish', 'zyplux-util-1.2.3.tgz', '--access', 'public'],
-      cwd: targets.util.dir,
-      program: 'npm',
-    });
+    expectNpmPackAndPublish(shell, targets.util.dir, 'zyplux-util-1.2.3.tgz');
   });
 
   test('8.2.2 builds and publishes a pypi target', async ({ cz, registries, shell }) => {

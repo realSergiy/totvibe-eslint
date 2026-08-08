@@ -1,7 +1,7 @@
 (
-    """VersionedCook for [pnpm] — global npm packages via `pnpm add -g`, installed versions read from pnpm's """
-    """global tree and resolved against the npm registry. Runs as the invoking user; depends on [url] (pnpm """
-    """itself)."""
+    """VersionedCook for [pnpm] — global npm packages via `pnpm add -g`, installed versions read from """
+    """`pnpm list -g` and resolved against the npm registry. Runs as the invoking user; depends on [url] """
+    """(pnpm itself)."""
 )
 
 import json
@@ -29,60 +29,59 @@ def fetch_npm_latest(name: str) -> str | None:
 
 def pnpm_home() -> Path:
     (
-        """pnpm's global home — `$PNPM_HOME` when the user set one (global bin shims land there directly), """
-        """else the `~/.local/share/pnpm` default of pnpm's standalone installer. Resolved at call time so it """
-        """follows become_user's $HOME drop in a forked child."""
+        """pnpm's home — `$PNPM_HOME` when the user set one, else the `~/.local/share/pnpm` default of """
+        """pnpm's standalone installer. Resolved at call time so it follows become_user's $HOME drop in a """
+        """forked child."""
     )
     return Path(os.environ["PNPM_HOME"]) if os.environ.get("PNPM_HOME") else Path.home() / ".local/share/pnpm"
 
 
-def global_modules_dir() -> Path:
-    """Where `pnpm add -g` unpacks packages, under pnpm's global home."""
-    return pnpm_home() / "global/5/node_modules"
-
-
-def read_package_version(package_json: Path) -> str | None:
-    try:
-        return json.loads(package_json.read_text(encoding="utf-8")).get("version")
-    except OSError, json.JSONDecodeError:
-        return None
+def global_bin_dir() -> Path:
+    """Where `pnpm add -g` links a global's executables — the dir pnpm demands on PATH before installing one."""
+    return pnpm_home() / "bin"
 
 
 def ensure_pnpm_home_env() -> None:
     (
-        """Pin `$PNPM_HOME` and put it on PATH before any `pnpm add -g`: pnpm refuses global installs when its """
-        """global bin dir is unset or off PATH, and totchef runs from a shell that may not have sourced the """
-        """installer's profile snippet. Mutates this process's environment, which every child inherits."""
+        """Pin `$PNPM_HOME` and put pnpm's global bin dir on PATH before any global command: pnpm refuses """
+        """to read or install globals while that dir is off PATH, and totchef runs from a shell that may """
+        """not have sourced the installer's profile snippet. Mutates this process's environment, which """
+        """every child inherits."""
     )
-    home = pnpm_home()
-    os.environ["PNPM_HOME"] = str(home)
+    os.environ["PNPM_HOME"] = str(pnpm_home())
+    bin_dir = str(global_bin_dir())
     path_entries = os.environ.get("PATH", "").split(os.pathsep)
-    if str(home) not in path_entries:
-        os.environ["PATH"] = os.pathsep.join([str(home), *path_entries])
+    if bin_dir not in path_entries:
+        os.environ["PATH"] = os.pathsep.join([bin_dir, *path_entries])
 
 
-def parse_installed_globals(modules_dir: Path) -> dict[str, str]:
+def parse_global_list(output: str) -> dict[str, str]:
     (
-        """Map package name -> installed version by reading each `package.json` under pnpm's global """
-        """node_modules, descending one level into `@scope` directories."""
+        """Map package name -> version from `pnpm list -g --depth 0 --json`: a list of global roots, each """
+        """carrying a `dependencies` object keyed by package name. The on-disk layout underneath is a """
+        """content-hashed directory, so pnpm itself is the only reliable reader."""
     )
-    if not modules_dir.is_dir():
-        return {}
-    versions: dict[str, str] = {}
-    for entry in modules_dir.iterdir():
-        if entry.name.startswith("@"):
-            for scoped in entry.iterdir():
-                if version := read_package_version(scoped / "package.json"):
-                    versions[f"{entry.name}/{scoped.name}"] = version
-        elif version := read_package_version(entry / "package.json"):
-            versions[entry.name] = version
-    return versions
+    roots = json.loads(output)
+    return {name: entry["version"] for root in roots for name, entry in root.get("dependencies", {}).items()}
+
+
+def read_global_versions(pnpm: Path) -> dict[str, str]:
+    completed = shell.run(str(pnpm), "list", "-g", "--depth", "0", "--json")
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        msg = f"`pnpm list -g` failed ({completed.returncode}): {detail}"
+        raise RuntimeError(msg)
+    return parse_global_list(completed.stdout)
 
 
 class PnpmCook(PackageListCook):
     @override
     def list_installed(self) -> dict[str, str]:
-        return parse_installed_globals(global_modules_dir())
+        pnpm = find_binary("pnpm")
+        if not pnpm:
+            return {}
+        ensure_pnpm_home_env()
+        return read_global_versions(pnpm)
 
     @override
     def find_latest(self, names: list[str]) -> dict[str, str | None]:

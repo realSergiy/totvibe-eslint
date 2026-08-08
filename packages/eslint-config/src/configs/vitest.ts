@@ -9,10 +9,3 @@ export const vitestConfig = {
     'vitest/expect-expect': ['error', { assertFunctionNames: ['expect', 'expect*'] }],
   },
 } satisfies ConfigWithExtends;
-
-export const testHarnessMocksConfig = {
-  files: ['tests/**/src/**/*.{ts,tsx}', 'tests/**/fixtures/**/*.{ts,tsx}'],
-  rules: {
-    'unicorn/no-top-level-side-effects': 'off',
-  },
-} satisfies ConfigWithExtends;
