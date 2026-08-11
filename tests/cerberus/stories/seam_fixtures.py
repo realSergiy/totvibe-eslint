@@ -27,7 +27,7 @@ import subprocess
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pytest
 from cerberus import bites, config, context, proc, registries, tool_pins
@@ -42,7 +42,14 @@ if TYPE_CHECKING:
     from cerberus.context import Context
 
 type RunCheck = Callable[[str, Repo, Context], CheckResult]
-type RunCheckWithFiles = Callable[[str, dict[str, str]], CheckResult]
+
+
+class RunCheckWithFiles(Protocol):
+    """Run a check by id against virtual file content, optionally under a repo cerberus.toml overlay."""
+
+    def __call__(self, check_id: str, files: dict[str, str], config_toml: str | None = None) -> CheckResult: ...
+
+
 type RunCheckWithWorkflows = Callable[[str, dict[str, str]], CheckResult]
 type RunCheckOnDisk = Callable[..., CheckResult]
 type MakeContext = Callable[..., Context]
@@ -79,7 +86,7 @@ def run_check() -> RunCheck:
 
 @pytest.fixture
 def run_check_with_files(
-    repo: Repo, ctx: Context, run_check: RunCheck, monkeypatch: pytest.MonkeyPatch
+    repo: Repo, ctx: Context, run_check: RunCheck, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> RunCheckWithFiles:
     """Run a check by id against virtual file content, keyed by repo-relative path.
 
@@ -87,12 +94,23 @@ def run_check_with_files(
     a real repo missing that path. `ctx.paths` is also stubbed to enumerate
     exactly this `files` mapping's keys, for checks that list a directory
     (e.g. discovering workspace packages or story-test files) rather than
-    reading one known path.
+    reading one known path. `config_toml` overlays the bundled cerberus
+    defaults, for checks whose verdict a repo may tune.
     """
 
-    def _run(check_id: str, files: dict[str, str]) -> CheckResult:
-        monkeypatch.setattr(ctx, "paths", lambda _repo: sorted(files))
-        monkeypatch.setattr(ctx, "file", lambda _repo, path: files.get(path))
+    def _run(check_id: str, files: dict[str, str], config_toml: str | None = None) -> CheckResult:
+        def list_paths(_repo: Repo) -> list[str]:
+            return sorted(files)
+
+        def read_file(_repo: Repo, path: str) -> str | None:
+            return files.get(path)
+
+        monkeypatch.setattr(ctx, "paths", list_paths)
+        monkeypatch.setattr(ctx, "file", read_file)
+        if config_toml is not None:
+            overlay = tmp_path / "cerberus.toml"
+            overlay.write_text(config_toml)
+            monkeypatch.setattr(ctx, "config", config.load(overlay))
         return run_check(check_id, repo, ctx)
 
     return _run
@@ -105,7 +123,10 @@ def run_check_with_workflows(
     """Run a check by id against virtual workflow content, keyed by workflow file name."""
 
     def _run(check_id: str, workflows: dict[str, str]) -> CheckResult:
-        monkeypatch.setattr(ctx, "workflows", lambda _repo: workflows)
+        def read_workflows(_repo: Repo) -> dict[str, str]:
+            return workflows
+
+        monkeypatch.setattr(ctx, "workflows", read_workflows)
         return run_check(check_id, repo, ctx)
 
     return _run
@@ -196,7 +217,11 @@ def graph_search() -> ModuleType:
 @pytest.fixture
 def no_git(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch away the `git` binary so a story test can exercise the git-unavailable path."""
-    monkeypatch.setattr(proc.shutil, "which", lambda _tool: None)
+
+    def find_nothing(_tool: str) -> str | None:
+        return None
+
+    monkeypatch.setattr(proc.shutil, "which", find_nothing)
 
 
 @pytest.fixture
@@ -228,19 +253,24 @@ def _strip_pin(spec: str) -> str:
 class FakeProc:
     """An in-memory double for `cerberus.proc`'s single subprocess boundary.
 
-    Outcomes are served per tool — the program a `bunx <tool> ...` invocation
+    Outcomes are served per tool — the program a `pnpx <tool> ...` invocation
     launches, or `argv[0]` itself for direct invocations; a version-pinned
     spec (`tool@1.2.3`) is served under the bare tool name. A tool that runs
     distinct subcommands can be served per subcommand via a `"tool subcommand"`
     key. `output_files` are written into the directory the invocation names
     after `--output`, mimicking tools that emit report files there.
-    `config_snapshots` captures the content of the file each invocation names
-    after `--config` — checks write that file into a temp dir that is gone by
-    the time a test can look, so the double reads it at call time.
+    `serve_report_file` writes to the single file path the invocation names
+    after `--output-file`, mimicking a tool that writes one named report file
+    rather than a directory of them — real fallow does this so a large report
+    never has to cross the subprocess stdout pipe. `config_snapshots` captures
+    the content of the file each invocation names after `--config` — checks
+    write that file into a temp dir that is gone by the time a test can look,
+    so the double reads it at call time.
     """
 
     outcomes: dict[str, subprocess.CompletedProcess[str]] = field(default_factory=dict)
     served_output_files: dict[str, dict[str, str]] = field(default_factory=dict)
+    served_report_files: dict[str, str] = field(default_factory=dict)
     calls: list[tuple[list[str], Path | None]] = field(default_factory=list)
     config_snapshots: list[str] = field(default_factory=list)
     missing: set[str] = field(default_factory=set)
@@ -258,6 +288,9 @@ class FakeProc:
         if output_files is not None:
             self.served_output_files[tool] = dict(output_files)
 
+    def serve_report_file(self, tool: str, content: str) -> None:
+        self.served_report_files[tool] = content
+
     def serve_missing(self, tool: str) -> None:
         self.missing.add(tool)
 
@@ -268,7 +301,15 @@ class FakeProc:
         out_dir = Path(argv[argv.index("--output") + 1])
         out_dir.mkdir(parents=True, exist_ok=True)
         for name, text in files.items():
-            (out_dir / name).write_text(text)
+            (out_dir / name).write_text(text, encoding="utf-8")
+
+    def _write_report_file(self, tool: str, argv: list[str]) -> None:
+        content = self.served_report_files.get(tool)
+        if content is None or "--output-file" not in argv:
+            return
+        out_path = Path(argv[argv.index("--output-file") + 1])
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")
 
     def _snapshot_config_file(self, argv: list[str]) -> None:
         if "--config" in argv:
@@ -279,11 +320,12 @@ class FakeProc:
         if argv[0] in self.missing:
             raise proc.ToolNotFoundError(argv[0])
         self._snapshot_config_file(argv)
-        launched = argv[1:] if argv[0] == "bunx" and len(argv) > 1 else argv
+        launched = argv[1:] if argv[0] == "pnpx" and len(argv) > 1 else argv
         launched_tool = _strip_pin(launched[0])
         subcommand_key = " ".join([launched_tool, *launched[1:2]])
         tool = subcommand_key if subcommand_key in self.outcomes else launched_tool
         self._write_output_files(tool, argv)
+        self._write_report_file(tool, argv)
         outcome = self.outcomes[tool]
         return subprocess.CompletedProcess(argv, outcome.returncode, outcome.stdout, outcome.stderr)
 

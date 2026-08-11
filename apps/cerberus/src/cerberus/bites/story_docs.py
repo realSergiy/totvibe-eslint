@@ -1,6 +1,6 @@
 """Shared machinery for the `story_tests_lockstep_py`/`story_tests_lockstep_ts` bites.
 
-A "package" is a uv/bun workspace member, or the repo root when the language
+A "package" is a uv/JS-TS workspace member, or the repo root when the language
 has no workspace (a single-project repo). A package needs user-story tests
 when it exposes a public interface — a CLI entry point, a published
 `exports`/`main` surface, or tests of its own already exist for it — and
@@ -26,6 +26,8 @@ import re
 import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from cerberus import workspaces
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -55,7 +57,6 @@ _TS_TEST_CALL = re.compile(
 )
 _PY_ANY_TEST = re.compile(r"^test_.+\.py$")
 _TS_ANY_TEST = re.compile(r".+\.(?:test|spec)\.tsx?$")
-_TEST_HARNESS_PACKAGE = "tests"  # a workspace member reserved for cross-package test tooling, never a product itself
 
 
 @dataclass(frozen=True)
@@ -197,22 +198,6 @@ def under_package(path: str, package: str) -> bool:
     return any(path.startswith(prefix) for prefix in _package_prefixes(package))
 
 
-def _dir_matches_glob(directory: str, glob: str) -> bool:
-    dir_parts = directory.split("/")
-    glob_parts = glob.rstrip("/").split("/")
-    return len(dir_parts) == len(glob_parts) and all(g in {"*", d} for g, d in zip(glob_parts, dir_parts, strict=True))
-
-
-def _member_dirs(paths: list[str], globs: list[str], manifest_name: str) -> list[str]:
-    suffix = f"/{manifest_name}"
-    dirs = {path[: -len(suffix)] for path in paths if path.endswith(suffix)}
-    return sorted(d for d in dirs if any(_dir_matches_glob(d, glob) for glob in globs))
-
-
-def _without_test_harness(dirs: list[str]) -> list[str]:
-    return [d for d in dirs if d.split("/", 1)[0] != _TEST_HARNESS_PACKAGE]
-
-
 def _py_package_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
     content = ctx.file(repo, "pyproject.toml")
     if content is None:
@@ -226,34 +211,12 @@ def _py_package_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
     workspace = uv.get("workspace") if isinstance(uv, dict) else None
     if isinstance(workspace, dict):
         members = [g for g in workspace.get("members", []) if isinstance(g, str)]
-        return _without_test_harness(_member_dirs(paths, members, "pyproject.toml"))
+        return workspaces.without_test_harness(workspaces.member_dirs(paths, members, "pyproject.toml"))
     return [""] if isinstance(data.get("project"), dict) else []
 
 
-def ts_member_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
-    """Every bun workspace member dir — including the tests/ harness members that package_dirs excludes."""
-    content = ctx.file(repo, "package.json")
-    if content is None:
-        return []
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, dict):
-        return []
-    workspaces = data.get("workspaces")
-    globs: list[str] | None = None
-    if isinstance(workspaces, list):
-        globs = [g for g in workspaces if isinstance(g, str)]
-    elif isinstance(workspaces, dict):
-        globs = [g for g in workspaces.get("packages", []) if isinstance(g, str)]
-    if globs is not None:
-        return _member_dirs(paths, globs, "package.json")
-    return [""]
-
-
 def _ts_package_dirs(repo: Repo, ctx: Context, paths: list[str]) -> list[str]:
-    return _without_test_harness(ts_member_dirs(repo, ctx, paths))
+    return workspaces.without_test_harness(workspaces.ts_member_dirs(repo, ctx, paths))
 
 
 def _py_needs_story_tests(package: str, repo: Repo, ctx: Context, paths: list[str]) -> bool:

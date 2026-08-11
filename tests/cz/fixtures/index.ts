@@ -1,11 +1,11 @@
-import type { CliRunner } from '@zyplux/tests-fixtures';
+import type { CliRunner } from '@zyplux/tests-fixtures/cli';
 
-import { cliTest } from '@zyplux/tests-fixtures';
+import { cliTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
-import type { Catalog } from './act';
-import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange';
+import type { Catalog } from './act.ts';
+import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange.ts';
 
-import { createCatalog, createCz } from './act';
+import { createCatalog, createCz } from './act.ts';
 import {
   createInitRepo,
   createLiveWorkspace,
@@ -15,7 +15,8 @@ import {
   createWriteArtifacts,
   enterCwd,
   seedReleaseTargets,
-} from './arrange';
+} from './arrange.ts';
+import { expectNpmPackAndPublish } from './assert.ts';
 
 type CzFixtures = {
   catalog: Catalog;
@@ -27,8 +28,8 @@ type CzFixtures = {
 };
 
 export const test = cliTest.extend<CzFixtures>({
-  catalog: async ({ cz, logs, tempDir }, use) => {
-    await use(createCatalog(cz, tempDir, logs));
+  catalog: async ({ cz, logs, network, tempDir }, use) => {
+    await use(createCatalog(cz, tempDir, logs, network));
   },
   cz: async ({}, use) => {
     await use(createCz());
@@ -47,7 +48,11 @@ export const test = cliTest.extend<CzFixtures>({
   },
 });
 
-export const targetsTest = test.extend<{ targets: SeededTargets }>({
+export const targetsTest = test.extend<{
+  expectNpmPackAndPublish: typeof expectNpmPackAndPublish;
+  targets: SeededTargets;
+}>({
+  expectNpmPackAndPublish: makeFixture(expectNpmPackAndPublish),
   targets: [
     async ({ repo, tempDir }, use) => {
       repo.setRoot(tempDir.path);
@@ -77,5 +82,6 @@ export const tempCwdTest = test.extend<{ initRepo: InitRepo; tempCwd: undefined;
   },
 });
 
-export type { TempDir } from '@zyplux/tests-fixtures';
+export type { Catalog } from './act.ts';
+export type { TempDir } from '@zyplux/tests-fixtures/fs';
 export { describe, expect } from 'vitest';

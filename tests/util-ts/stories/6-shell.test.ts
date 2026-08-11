@@ -16,7 +16,7 @@ const expectBuiltArgv = async (
 
   await invoke();
 
-  expect(shell.calls[0]).toEqual({ argv: [...expectedArgv], program });
+  expect(shell.calls[0]).toMatchObject({ argv: [...expectedArgv], program });
 };
 
 describe('6.1 translating flag objects into CLI arguments', () => {
@@ -109,7 +109,7 @@ describe('6.4 reading trimmed command output', () => {
 });
 
 describe('6.5 invoking the shell function directly', () => {
-  test('6.5.1 forwards a direct call to the underlying Bun.$ tagged template', async ({ $, shell }) => {
+  test('6.5.1 forwards a direct call to the underlying shell harness', async ({ $, shell }) => {
     shell.otherwise('output');
     const dir = '/tmp/pkg';
 

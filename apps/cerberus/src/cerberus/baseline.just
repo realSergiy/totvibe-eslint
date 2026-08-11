@@ -15,26 +15,26 @@ alias pr := push-ready
 default:
     @just --list
 
-# Install both workspaces: bun + uv.
+# Install both workspaces: pnpm + uv.
 install:
-    bun install
+    pnpm install
     uv sync --all-packages --all-groups
 
 # Report unused files, deps, and exports: knip (JS workspace, default + prod pass) + vulture (Python).
 knip:
-    bun run knip
-    bun run knip --config knip.prod.json
+    pnpm run knip
+    pnpm run knip --config knip.prod.json
     uv run vulture
 
-# Type-check both workspaces: tsc/bun for .ts, pyrefly for .py.
+# Type-check both workspaces: tsc for .ts, pyrefly for .py.
 typecheck:
-    bun run typecheck
+    pnpm run typecheck
     uv run pyrefly check
 
 # Lint and format both workspaces with autofix.
 lint:
-    bun run lint:fix
-    bun run format
+    pnpm run lint:fix
+    pnpm run format
     uv run rumdl check --fix
     uv run rumdl fmt
     uv run ruff check --fix
@@ -42,7 +42,7 @@ lint:
 
 # Run tests for both workspaces, JS and Python in parallel. Optional arg filters by test name, skipping coverage; never fails when nothing matches.
 test name='':
-    bun run --silent cz test {{ if name == '' { '' } else { quote(name) } }}
+    pnpm run {{ if name == '' { '--silent cz test' } else { 'cz test ' + quote(name) } }}
 
 # Verify org invariants with cerberus, over the coverage report `test` regenerates.
 cerberus:
@@ -53,26 +53,26 @@ check: install knip typecheck lint test cerberus
 
 # Upgrade deps across both workspaces: ncu bumps JS ranges; uv lock --upgrade + uv-bump raise Python >= floors. Forwards extra args to ncu.
 upgrade *args='':
-    bun run upgrade -- {{ args }}
+    pnpm run upgrade -- {{ args }}
     uv lock --upgrade
     uvx uv-bump -v
     uv sync --all-packages --all-groups
 
 # Interactively select JS upgrades, then non-interactively upgrade Python (uv has no interactive mode) and reinstall both.
 upgrade-interactive:
-    bun run upgrade -- -i
-    bun install
+    pnpm run upgrade -- -i
+    pnpm install
     uv lock --upgrade
     uvx uv-bump -v
     uv sync --all-packages --all-groups
 
 # Push the current branch and open a draft PR (-r/--ready marks it ready and enables auto-merge).
 push *flags:
-    bun run cz push-branch {{ flags }}
+    pnpm run cz push-branch {{ flags }}
 
 # Push the current branch and open a PR marked ready, enabling auto-merge.
 push-ready: (push "--ready")
 
 # Remove gitignored build artifacts and caches from all workspaces.
 clean *flags:
-    bun run cz clean {{ flags }}
+    pnpm run cz clean {{ flags }}

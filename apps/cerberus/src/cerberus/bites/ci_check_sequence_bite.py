@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from cerberus.context import Context
 
 ID = "ci_check_sequence"
-SUMMARY = "ci.yml runs the canonical check sequence per stack, in the org container"
+SUMMARY = "ci.yml runs the canonical check sequence per stack"
 SCOPE = Scope.CONTENT
 
 _CI_PATHS = (".github/workflows/ci.yml", ".github/workflows/ci.yaml")
@@ -31,20 +31,6 @@ def _parse_workflow(content: str) -> dict[str, Any] | None:
     except yaml.YAMLError:
         return None
     return doc if isinstance(doc, dict) else None
-
-
-def _container_images(doc: dict[str, Any]) -> list[str]:
-    images: list[str] = []
-    jobs = doc.get("jobs")
-    if not isinstance(jobs, dict):
-        return images
-    for job in jobs.values():
-        container = job.get("container") if isinstance(job, dict) else None
-        if isinstance(container, str):
-            images.append(container)
-        elif isinstance(container, dict) and isinstance(container.get("image"), str):
-            images.append(container["image"])
-    return images
 
 
 def _verify_sequence(res: CheckResult, label: str, required: tuple[str, ...], commands: list[str]) -> None:
@@ -86,9 +72,6 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
         _verify_sequence(res, "ts", cfg.ci_required_ts, commands)
     if has_python:
         _verify_sequence(res, "python", cfg.ci_required_python, commands)
-
-    if has_ts and not any(image.startswith(cfg.ci_image) for image in _container_images(doc)):
-        res.fail(f"bun ci should run in the `{cfg.ci_image}` container (Node-free guarantee)")
 
     if not res.problems:
         res.ok("ci.yml runs the canonical sequence")

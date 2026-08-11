@@ -1,8 +1,8 @@
 import { describe, expect, targetsTest as test } from '#fixtures';
 
-const MISSING_GHCR_CREDENTIALS: [missingName: string, ghToken: string, githubActor: string][] = [
-  ['GH_TOKEN', '', 'zyplux-bot'],
-  ['GITHUB_ACTOR', 'gh-token', ''],
+const MISSING_GHCR_CREDENTIALS: [shape: string, missingName: string, ghToken: string, githubActor: string][] = [
+  ['1 requires GH_TOKEN before pushing a ghcr target', 'GH_TOKEN', '', 'zyplux-bot'],
+  ['2 requires GITHUB_ACTOR before pushing a ghcr target', 'GITHUB_ACTOR', 'gh-token', ''],
 ];
 
 describe('8.1 skipping an already-published target', () => {
@@ -17,34 +17,41 @@ describe('8.1 skipping an already-published target', () => {
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
     expect(logs).toHaveLogged('@zyplux/util 1.2.3 is already published; nothing to do');
-    expect(shell).not.toHaveRunMatching(/bun pm pack|podman|uv build/);
+    expect(shell).not.toHaveRunMatching(/pnpm pack|podman|uv build/);
   });
 });
 
 describe('8.2 publishing to each registry kind', () => {
-  test('8.2.1 packs and publishes an npm target', async ({ cz, registries, shell, targets }) => {
+  test('8.2.1 packs and publishes an npm target', async ({
+    cz,
+    expectNpmPackAndPublish,
+    registries,
+    shell,
+    targets,
+  }) => {
     registries.setPublished({ npmPublished: false });
-    shell.on(/bun pm pack/, '');
+    shell.on(/pnpm pack/, '');
+    shell.on(/npm publish/, '');
 
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
-    expect(shell.commandsMatching(/bun pm pack/)).toEqual([
-      `cd ${targets.util.dir} && bun pm pack && bunx npm@11 publish ./*.tgz --access public`,
-    ]);
+    expectNpmPackAndPublish(shell, targets.util.dir, 'zyplux-util-1.2.3.tgz');
   });
 
   test('8.2.2 builds and publishes a pypi target', async ({ cz, registries, shell }) => {
     registries.setPublished({ pypiPublished: false });
     shell.on('uv build', '');
+    shell.on('uv publish', '');
 
     await cz.run('publish-tagged-target', 'cerberus-v2.3.4');
 
-    expect(shell.commandsMatching('uv build')).toEqual(['uv build --package zyplux-cerberus && uv publish']);
+    expect(shell.commandsMatching('uv build')).toEqual(['uv build --package zyplux-cerberus']);
+    expect(shell.commandsMatching('uv publish')).toEqual(['uv publish']);
   });
 
   test.for(MISSING_GHCR_CREDENTIALS)(
-    '8.2.3 requires GH_TOKEN and GITHUB_ACTOR before pushing a ghcr target',
-    async ([missingName, ghToken, githubActor], { cz, env, registries, shell }) => {
+    '8.2.%s',
+    async ([, missingName, ghToken, githubActor], { cz, env, registries, shell }) => {
       registries.setPublished({ ghcrPublished: false });
       env.set('GH_TOKEN', ghToken);
       env.set('GITHUB_ACTOR', githubActor);
@@ -64,8 +71,13 @@ describe('8.2 publishing to each registry kind', () => {
 
     await cz.run('publish-tagged-target', 'ci-image-v3.4.5');
 
+    expect(shell.calls).toContainEqual({
+      argv: ['login', 'ghcr.io', '-u', 'zyplux-bot', '--password-stdin'],
+      program: 'podman',
+      stdin: 'gh-token',
+    });
     expect(shell.commandsMatching('podman')).toEqual([
-      expect.stringContaining('podman login ghcr.io -u zyplux-bot --password-stdin < '),
+      'podman login ghcr.io -u zyplux-bot --password-stdin',
       `podman build -t ghcr.io/zyplux/ci:3.4.5 -t ghcr.io/zyplux/ci:latest ${targets.ci.dir}`,
       'podman push ghcr.io/zyplux/ci:3.4.5',
       'podman push ghcr.io/zyplux/ci:latest',

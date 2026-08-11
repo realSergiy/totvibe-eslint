@@ -1,23 +1,24 @@
-import type { LibraryFixtures } from '@zyplux/tests-fixtures';
+import type { LibraryFixtures } from '@zyplux/tests-fixtures/story';
 import type { TestAPI } from 'vitest';
 
-import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
+import { libraryTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
-import type { PrintedConfig } from './act';
+import type { PrintedConfig } from './act.ts';
 
+import { createFixRule, createLintRule, createMergedLint, parsePrintedConfig, printConfig, subjects } from './act.ts';
+import { loadRulesSnapshot } from './arrange.ts';
 import {
-  createFixRule,
-  createLintRule,
-  createMergedLint,
-  loadRulesSnapshot,
-  parsePrintedConfig,
-  printConfig,
-  subjects,
-} from './act';
-import { applySuggestion, isAbsolutePath, tsconfigRootDirs } from './assert';
+  applySuggestion,
+  expectEachToReport,
+  expectEachToReportNothing,
+  isAbsolutePath,
+  tsconfigRootDirs,
+} from './matchers.ts';
 
 type EslintFixtures = {
   applySuggestion: typeof applySuggestion;
+  expectEachToReport: typeof expectEachToReport;
+  expectEachToReportNothing: typeof expectEachToReportNothing;
   fixRule: ReturnType<typeof createFixRule>;
   isAbsolutePath: typeof isAbsolutePath;
   lint: Awaited<ReturnType<typeof createMergedLint>>;
@@ -34,6 +35,8 @@ type EslintFixtures = {
 
 export const test: TestAPI<EslintFixtures & LibraryFixtures> = libraryTest.extend<EslintFixtures>({
   applySuggestion: makeFixture(applySuggestion),
+  expectEachToReport: makeFixture(expectEachToReport),
+  expectEachToReportNothing: makeFixture(expectEachToReportNothing),
   fixRule: async ({ ruleName }, use) => {
     await use(createFixRule(ruleName));
   },
@@ -63,7 +66,7 @@ export const test: TestAPI<EslintFixtures & LibraryFixtures> = libraryTest.exten
   zyplux: makeFixture(subjects.zyplux),
 });
 
-export type { PrintedConfig, ZypluxConfig } from './act';
-export { lintMatchers } from './assert';
+export type { PrintedConfig, ZypluxConfig } from './act.ts';
+export { lintMatchers } from './matchers.ts';
 export type { Linter } from 'eslint';
 export { describe, expect } from 'vitest';

@@ -34,10 +34,14 @@ if TYPE_CHECKING:
 STATUS_RANK: dict[Status, int] = {"ok": 0, "soft_fail": 1, "hard_fail": 2}
 
 
+def rank_status(status: Status) -> int:
+    return STATUS_RANK[status]
+
+
 def pick_worst_status(statuses: list[Status]) -> Status:
     if not statuses:
         return "ok"
-    return max(statuses, key=lambda s: STATUS_RANK[s])
+    return max(statuses, key=rank_status)
 
 
 def format_version(version: str | None) -> str:
@@ -540,15 +544,18 @@ class _Scheduler:
         self.started_at[node_id] = time.monotonic()
         return pid
 
+    def _reach(self, node_id: str) -> int:
+        return self.scheduling.reach[node_id]
+
     def launch_ready(self) -> None:
-        ready = sorted(self.sorter.get_ready(), key=lambda n: self.scheduling.reach[n], reverse=True)
+        ready = sorted(self.sorter.get_ready(), key=self._reach, reverse=True)
         for node_id in ready:
             if self.nodes[node_id].needs_root:
                 self.pending_root.append(node_id)
             else:
                 self._fork(node_id)
         if self.root_pid is None and self.pending_root:
-            self.pending_root.sort(key=lambda n: self.scheduling.reach[n])
+            self.pending_root.sort(key=self._reach)
             self.root_pid = self._fork(self.pending_root.pop())
 
     def reap_one(self) -> CookResult:

@@ -1,19 +1,33 @@
 # @zyplux/tests-fixtures
 
-Story-test fixtures for code built on Bun and `@zyplux/util`. Fakes swap in at the lowest boundary (`Bun.$`, `fetch`, `console`, `prompt`, `Bun.sleep`, `process.env`) so tests exercise only public interfaces. Ships TypeScript source, consumed directly under Bun.
+Story-test fixtures for Node CLIs and libraries. Fakes swap in at the lowest boundary (`node:child_process`, `node:readline/promises`, `node:timers/promises`, `fetch`, `console`, `process.env`) so tests exercise only public interfaces.
 
 ## Install
 
 ```sh
-bun add -d @zyplux/tests-fixtures
+pnpm add -D @zyplux/tests-fixtures
 ```
+
+Each fake needs the Node module it stands in for mocked in that project's own vitest setup file — only the modules whose fakes you use:
+
+```ts
+import { vi } from 'vitest';
+
+vi.mock('node:child_process', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:child_process')>();
+  return { ...actual, spawn: vi.fn(actual.spawn) }; // shell fake
+});
+// node:readline/promises -> createInterface (prompt fake); node:timers/promises -> setTimeout (instant sleeps)
+```
+
+Each factory wraps the original, so the module stays fully live until a fake installs an implementation. A fake whose module is unmocked says which one to add.
 
 ## Use
 
 Pick a base per app type, extend it with suite fixtures, and keep the binding named `test`:
 
 ```ts
-import { cliTest } from '@zyplux/tests-fixtures';
+import { cliTest } from '@zyplux/tests-fixtures/story';
 
 export const test = cliTest;
 export { describe, expect } from 'vitest';
@@ -35,19 +49,22 @@ describe('1.1 pushing a branch', () => {
 });
 ```
 
+## Entry points
+
+There is no barrel — import each fixture from its own subpath: `/story` (`libraryTest`, `cliTest`, `makeFixture`), `/shell`, `/console`, `/fetch`, `/fs`, `/prompt`, `/cli`, `/matchers`.
+
 ## Bases
 
-- `libraryTest` — lazy fixtures: `shell` (fake `Bun.$`, installed only when destructured), `tempDir` (auto-removed scratch directory with `path`, `write`, `exists`).
-- `cliTest` — extends `libraryTest`; auto-silences and captures `console` (`logs`), makes `Bun.sleep` instant; adds lazy `network` (fake `fetch`), `prompt` (fake `globalThis.prompt` that accepts and records every message), and `env` (`set(name, value)` stubs an env var for the test).
+- `libraryTest` — lazy fixtures: `shell` (fake `node:child_process` spawn, installed only when destructured), `tempDir` (auto-removed scratch directory with `path`, `write`, `exists`).
+- `cliTest` — extends `libraryTest`; auto-silences and captures `console` (`logs`), makes `node:timers/promises` sleeps instant; adds lazy `network` (fake `fetch`), `prompt` (fake `node:readline/promises` interface that accepts and records every question), and `env` (`set(name, value)` stubs an env var for the test).
 
 ## Fakes
 
-- `createShellFake()` — routes commands (`on(pattern, ...replies)`, later routes win, the last reply repeats; `otherwise(reply)` sets a fallback, unrouted commands throw) and records `calls` (`{ argv, program }`), `commands` (rendered strings), `commandsMatching(pattern)`.
+- `createShellFake()` — routes commands (`on(pattern, ...replies)`, later routes win, the last reply repeats; `otherwise(reply)` sets a fallback, unrouted commands throw) and records `calls` (`{ argv, cwd?, env?, program, stdin? }`), `commands` (rendered strings), `commandsMatching(pattern)`.
 - `createConsoleCapture()` — records `logLines`/`warnLines`/`errorLines`.
 - `createFetchFake()` — routes urls (`on(prefixOrRegExp, reply)`, `otherwise(reply)`) and records `requests`; `okResponse()`/`notFoundResponse()` build replies.
-- `createPromptFake()` — accepts every `prompt()` call and records `messages`.
+- `createPromptFake()` — accepts every `question()` call and records `messages`.
 - `createTempDir()` — `path`, `write(relativePath, content)`, `exists(relativePath)`, `remove()`.
-- `fakeShellOutput(stdout, exitCode?)`, `fakeShellPromise(result)`, `toArgv(values)` — raw `Bun.$` doubles behind `createShellFake`.
 
 ## Matchers
 

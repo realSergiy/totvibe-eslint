@@ -1,9 +1,8 @@
 {
   "name": "@zyplux/cz",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Repo automation CLI: cut releases, push branches and PRs, and clone reference repos.",
   "keywords": [
-    "bun",
     "cli",
     "release",
     "monorepo",
@@ -23,30 +22,11 @@
     "cz": "./src/index.ts"
   },
   "exports": {
-    ".": {
-      "types": "./src/cli.ts",
-      "default": "./src/cli.ts"
-    },
-    "./contracts": {
-      "types": "./src/contracts.ts",
-      "default": "./src/contracts.ts"
-    },
+    ".": "./src/cli.ts",
+    "./contracts": "./src/contracts.ts",
     "./package.json": "./package.json"
   },
   "imports": {
-    "#cli": "./src/cli.ts",
-    "#contracts": "./src/contracts.ts",
-    "#commands/assert-tag-version": "./src/commands/assert-tag-version.ts",
-    "#commands/bootstrap-npm-target": "./src/commands/bootstrap-npm-target.ts",
-    "#commands/clean": "./src/commands/clean.ts",
-    "#commands/clone-reference-repo": "./src/commands/clone-reference-repo.ts",
-    "#commands/deps-catalog": "./src/commands/deps-catalog.ts",
-    "#commands/print-tag-kind": "./src/commands/print-tag-kind.ts",
-    "#commands/publish-tagged-target": "./src/commands/publish-tagged-target.ts",
-    "#commands/push-branch": "./src/commands/push-branch.ts",
-    "#commands/release-bumped-targets": "./src/commands/release-bumped-targets.ts",
-    "#commands/release-tag-command": "./src/commands/release-tag-command.ts",
-    "#commands/test": "./src/commands/test.ts",
     "#deps-catalog": "./src/deps-catalog.ts",
     "#optique": "./src/optique.ts",
     "#package.json": "./package.json",
@@ -54,10 +34,33 @@
   },
   "files": [
     "README.md",
-    "src"
+    "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "imports": {
+      "#deps-catalog": "./dist/src/deps-catalog.js",
+      "#optique": "./dist/src/optique.js",
+      "#package.json": "./package.json",
+      "#release-targets": "./dist/src/release-targets.js"
+    },
+    "bin": {
+      "cz": "./dist/src/index.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/src/cli.d.ts",
+        "default": "./dist/src/cli.js"
+      },
+      "./contracts": {
+        "types": "./dist/src/contracts.d.ts",
+        "default": "./dist/src/contracts.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "prepack": "tsc -b tsconfig.json"
   },
   "dependencies": {
     "@optique/core": "catalog:",
@@ -66,7 +69,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*"
   }
 }

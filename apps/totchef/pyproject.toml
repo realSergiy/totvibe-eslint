@@ -1,6 +1,6 @@
 [project]
 name = "totchef"
-version = "0.0.1"
+version = "0.0.2"
 description = "Declarative, idempotent system configuration for Ubuntu/Kubuntu — hand it a recipe, it makes the machine comply."
 readme = "README.md"
 requires-python = ">=3.14"
@@ -19,7 +19,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "rich>=15.0.0",
     "toon-format>=0.9.0b1",
-    "typer>=0.26.8",
+    "typer>=0.27.1",
 ]
 
 [project.scripts]
@@ -32,13 +32,14 @@ totchef = "totchef.cli:main"
 url = "totchef.cooks.url_cook:UrlCook"
 cargo = "totchef.cooks.cargo_cook:CargoCook"
 uv = "totchef.cooks.uv_cook:UvCook"
-bun = "totchef.cooks.bun_cook:BunCook"
+pnpm = "totchef.cooks.pnpm_cook:PnpmCook"
 skills = "totchef.cooks.skills_cook:SkillsCook"
 file = "totchef.cooks.file_cook:FileCook"
 conf = "totchef.cooks.conf_cook:ConfCook"
 usr_local_bin = "totchef.cooks.usr_local_bin_root_cook:UsrLocalBinCook"
 usr_local_sbin = "totchef.cooks.usr_local_sbin_root_cook:UsrLocalSbinCook"
 local_bin = "totchef.cooks.local_bin_cook:LocalBinCook"
+local_bin_dir = "totchef.cooks.local_bin_dir_cook:LocalBinDirCook"
 bash = "totchef.cooks.bash_cook:BashCook"
 apt_repo = "totchef.cooks.apt_repo_root_cook:AptRepoCook"
 apt_pkg = "totchef.cooks.apt_pkg_root_cook:AptPkgCook"

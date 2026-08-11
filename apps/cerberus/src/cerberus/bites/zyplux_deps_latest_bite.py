@@ -16,6 +16,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import yaml
+
 from cerberus import registries
 from cerberus.model import CheckResult, Repo, Scope
 
@@ -28,7 +30,7 @@ ID = "zyplux_deps_latest"
 SUMMARY = "every @zyplux/* npm package, zyplux-* PyPI distribution, and ghcr.io/zyplux image is at latest release"
 SCOPE = Scope.CONTENT
 
-_NPM_LOCKED = re.compile(r'"(@zyplux/[\w.-]+)@(\d[\w.+-]*)"')
+_PNPM_LOCKED_KEY = re.compile(r"^/?(@zyplux/[\w.-]+)@(\d[\w.+-]*)")
 _PYPI_PINNED = re.compile(r"\b(zyplux-[\w.-]+)==(\d[\w.!+-]*)")
 _GHCR_IMAGE = re.compile(r"ghcr\.io/(zyplux/[\w./-]+?):([\w.-]+)")
 _FLOATING_IMAGE_TAG = "latest"
@@ -53,9 +55,17 @@ class Usage:
         return f"ghcr.io/{self.name}" if self.kind == "ghcr" else self.name
 
 
-def _npm_usages(lock: str) -> Iterator[Usage]:
-    for name, version in _NPM_LOCKED.findall(lock):
-        yield Usage("npm", name, version, "bun.lock")
+def _pnpm_usages(lock: str) -> Iterator[Usage]:
+    try:
+        doc = yaml.safe_load(lock)
+    except yaml.YAMLError:
+        return
+    packages = doc.get("packages") if isinstance(doc, dict) else None
+    if not isinstance(packages, dict):
+        return
+    for key in packages:
+        if isinstance(key, str) and (match := _PNPM_LOCKED_KEY.match(key)):
+            yield Usage("npm", match.group(1), match.group(2), "pnpm-lock.yaml")
 
 
 def _uv_lock_usages(lock: str) -> Iterator[Usage]:
@@ -79,8 +89,8 @@ def _pinned_text_usages(text: str, location: str) -> Iterator[Usage]:
 
 def _collect_usages(repo: Repo, ctx: Context) -> list[Usage]:
     usages: set[Usage] = set()
-    if (bun_lock := ctx.file(repo, "bun.lock")) is not None:
-        usages.update(_npm_usages(bun_lock))
+    if (pnpm_lock := ctx.file(repo, "pnpm-lock.yaml")) is not None:
+        usages.update(_pnpm_usages(pnpm_lock))
     if (uv_lock := ctx.file(repo, "uv.lock")) is not None:
         usages.update(_uv_lock_usages(uv_lock))
     if (justfile := ctx.file(repo, "justfile")) is not None:

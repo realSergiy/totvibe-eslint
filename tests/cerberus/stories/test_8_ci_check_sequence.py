@@ -28,13 +28,13 @@ _PY_CI = (
     "      - run: uv run --no-sync pytest\n"
 )
 _TS_CI = (
-    "jobs:\n  ci:\n    container: ghcr.io/zyplux/ci:1.3.14\n    steps:\n"
-    "      - run: bun install --frozen-lockfile\n"
-    "      - run: bun run knip\n"
-    "      - run: bun run typecheck\n"
-    "      - run: bun run lint\n"
-    "      - run: bunx prettier --check .\n"
-    "      - run: bun run test\n"
+    "jobs:\n  ci:\n    steps:\n"
+    "      - run: pnpm install --frozen-lockfile\n"
+    "      - run: pnpm run knip\n"
+    "      - run: pnpm run typecheck\n"
+    "      - run: pnpm run lint\n"
+    "      - run: pnpx prettier --check .\n"
+    "      - run: pnpm run test\n"
 )
 
 
@@ -122,7 +122,7 @@ def test_8_3_3_fails_when_the_required_python_steps_run_out_of_canonical_order(
     ]
 
 
-def test_8_4_1_passes_a_ts_ci_workflow_that_runs_every_required_step_in_order_within_the_org_container(
+def test_8_4_1_passes_a_ts_ci_workflow_that_runs_every_required_step_in_order(
     run_ci_sequence: RunCiSequence, sequence_pass: Finding
 ) -> None:
     result = run_ci_sequence(ts=True, ci=_TS_CI)
@@ -132,49 +132,30 @@ def test_8_4_1_passes_a_ts_ci_workflow_that_runs_every_required_step_in_order_wi
 def test_8_4_2_fails_when_a_required_ts_step_is_missing_or_does_not_match_its_required_command(
     run_ci_sequence: RunCiSequence, fail: MakeFinding
 ) -> None:
-    ci = _TS_CI.replace("      - run: bun run knip\n", "")
+    ci = _TS_CI.replace("      - run: pnpm run knip\n", "")
     result = run_ci_sequence(ts=True, ci=ci)
-    assert result.findings == [fail("ts ci is missing `bun run knip`")]
+    assert result.findings == [fail("ts ci is missing `pnpm run knip`")]
 
 
 def test_8_4_3_fails_when_the_required_ts_steps_run_out_of_canonical_order(
     run_ci_sequence: RunCiSequence, fail: MakeFinding
 ) -> None:
     ci = (
-        "jobs:\n  ci:\n    container: ghcr.io/zyplux/ci:1.3.14\n    steps:\n"
-        "      - run: bun install --frozen-lockfile\n"
-        "      - run: bun run typecheck\n"
-        "      - run: bun run knip\n"
-        "      - run: bun run lint\n"
-        "      - run: bunx prettier --check .\n"
-        "      - run: bun run test\n"
+        "jobs:\n  ci:\n    steps:\n"
+        "      - run: pnpm install --frozen-lockfile\n"
+        "      - run: pnpm run typecheck\n"
+        "      - run: pnpm run knip\n"
+        "      - run: pnpm run lint\n"
+        "      - run: pnpx prettier --check .\n"
+        "      - run: pnpm run test\n"
     )
     result = run_ci_sequence(ts=True, ci=ci)
     assert result.findings == [
         fail(
-            "ts ci steps run out of canonical order; expected ['bun install --frozen-lockfile', 'bun run knip', "
-            "'bun run typecheck', 'bun run lint', 'prettier --check', 'bun run test']",
+            "ts ci steps run out of canonical order; expected ['pnpm install --frozen-lockfile', 'pnpm run knip', "
+            "'pnpm run typecheck', 'pnpm run lint', 'prettier --check', 'pnpm run test']",
         )
     ]
-
-
-def test_8_4_4_fails_when_the_ts_job_does_not_run_in_the_org_container(
-    run_ci_sequence: RunCiSequence, fail: MakeFinding
-) -> None:
-    ci = _TS_CI.replace("    container: ghcr.io/zyplux/ci:1.3.14\n", "")
-    result = run_ci_sequence(ts=True, ci=ci)
-    assert result.findings == [fail("bun ci should run in the `ghcr.io/zyplux/ci` container (Node-free guarantee)")]
-
-
-def test_8_4_5_passes_when_the_container_is_declared_as_a_mapping_with_an_image_key(
-    run_ci_sequence: RunCiSequence, sequence_pass: Finding
-) -> None:
-    ci = _TS_CI.replace(
-        "    container: ghcr.io/zyplux/ci:1.3.14\n",
-        "    container:\n      image: ghcr.io/zyplux/ci:1.3.14\n",
-    )
-    result = run_ci_sequence(ts=True, ci=ci)
-    assert result.findings == [sequence_pass]
 
 
 def test_8_5_1_fails_when_a_required_step_appears_only_in_a_comment(

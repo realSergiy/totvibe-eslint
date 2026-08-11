@@ -5,7 +5,7 @@ language's duplicated-token percentage from jscpd's json report — not just
 the aggregate total. Cerberus owns the whole jscpd invocation: the file
 selection pattern and ignore globs come from `[jscpd] pattern` and
 `ignore` in cerberus.toml, scan roots come from the repo's own workspace
-manifests (bun `workspaces`, uv `[tool.uv.workspace] members`), the
+manifests (pnpm workspace globs, uv `[tool.uv.workspace] members`), the
 subprocess runs with its cwd outside the repo so repo-local jscpd config
 (`.jscpd.json`, package.json `jscpd`) can never leak in, and jscpd itself
 runs at the exact version pinned in `cerberus.tool_pins` so every run
@@ -20,6 +20,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import yaml
 
 from cerberus import proc, tool_pins, workspaces
 from cerberus.model import CheckResult, Scope
@@ -44,14 +46,14 @@ class _LanguageStat:
 
 def _scan_roots(repo: Repo, ctx: Context) -> list[Path]:
     repo_root = ctx.source.root.resolve()
-    globs = [*workspaces.bun_member_globs(repo, ctx), *workspaces.uv_member_globs(repo, ctx)]
-    members = {match for glob in globs for match in repo_root.glob(glob) if match.is_dir()}
-    return sorted(members) if members else [repo_root]
+    globs = [*workspaces.ts_member_globs(repo, ctx), *workspaces.uv_member_globs(repo, ctx)]
+    members = workspaces.member_paths(repo_root, globs)
+    return members or [repo_root]
 
 
 def _selection_argv(ctx: Context) -> list[str]:
     return [
-        "bunx",
+        "pnpx",
         tool_pins.format_spec("jscpd"),
         "--pattern",
         ctx.config.jscpd_pattern,
@@ -100,8 +102,8 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
     threshold = ctx.config.jscpd_threshold
     try:
         scan_roots = [str(root) for root in _scan_roots(repo, ctx)]
-    except json.JSONDecodeError as exc:
-        res.error(f"package.json is not valid JSON: {exc}")
+    except yaml.YAMLError as exc:
+        res.error(f"pnpm-workspace.yaml is not valid YAML: {exc}")
         return res
     except tomllib.TOMLDecodeError as exc:
         res.error(f"pyproject.toml is not valid TOML: {exc}")

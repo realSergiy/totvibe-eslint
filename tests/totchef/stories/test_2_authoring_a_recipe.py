@@ -34,13 +34,13 @@ def test_2_1_1_each_section_maps_to_a_cook_plain_vs_subtable(
     """A plain-data section is one unit of work; a subtable section fans out to one addressable unit per entry."""
     terminal.arrange("apt-cache policy", APT_CACHE_POLICY)
     recipe.declares("apt_pkg", packages=["git"])  # plain-data section: one domain unit
-    recipe.declares("url", "bun", url="https://bun.sh/install")  # subtable …
+    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh")  # subtable …
     recipe.declares("url", "uv", url="https://astral.sh/uv")  # … one unit per entry
 
     plan = totchef.plan()
 
     plan.assert_shows("apt_pkg.git", "would install")  # the plain section's single domain
-    plan.assert_shows("url.bun", "would install")  # the subtable fanned out …
+    plan.assert_shows("url.pnpm", "would install")  # the subtable fanned out …
     plan.assert_shows("url.uv", "would install")  # … into two independently addressable units
 
 

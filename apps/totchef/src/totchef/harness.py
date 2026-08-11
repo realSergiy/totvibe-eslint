@@ -104,11 +104,12 @@ def write_if_changed(path: Path, content: bytes | str, mode: int = 0o644, note: 
 
 
 def bootstrap_bin_dirs() -> tuple[Path, ...]:
-    """Dirs rustup/bun/uv install into before PATH, resolved from $HOME, following become_user in a forked child."""
+    """Dirs rustup/pnpm/uv install into before PATH, resolved from $HOME, following become_user in a forked child."""
     home = Path.home()
     return (
         home / ".cargo/bin",
-        home / ".bun/bin",
+        home / ".local/share/pnpm",
+        home / ".local/share/pnpm/bin",
         home / ".local/bin",
         home / ".claude/local",
     )
@@ -139,8 +140,8 @@ def fetch_url(url: str) -> bytes:
     if not url.startswith(("http://", "https://")):
         msg = f"refusing to fetch {url!r}: only http/https URLs are allowed"
         raise ValueError(msg)
-    request = Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310 — scheme validated above; ruff's own preview mode still flags it: https://github.com/astral-sh/ruff/issues/7918
-    with urlopen(request, timeout=FETCH_TIMEOUT_SECONDS) as response:  # noqa: S310 — same scheme guard, same acknowledged preview-mode limitation
+    request = Request(url, headers={"User-Agent": USER_AGENT})  # ruff: ignore[suspicious-url-open-usage] — scheme validated above; ruff's own preview mode still flags it: https://github.com/astral-sh/ruff/issues/7918
+    with urlopen(request, timeout=FETCH_TIMEOUT_SECONDS) as response:  # ruff: ignore[suspicious-url-open-usage] — same scheme guard, same acknowledged preview-mode limitation
         return response.read()
 
 
@@ -155,7 +156,7 @@ def fetch_latest_concurrent(names: list[str], fetch_one: Callable[[str], str | N
             name = pending[future]
             try:
                 latest[name] = future.result()
-            except Exception as exc:  # noqa: BLE001 — fetch_one is a plugin extension point (totchef.cooks); logger.opt(exception=True) is loguru's own idiom for propagating the trace below, but ruff doesn't recognize the .opt() chain as a logging call: https://github.com/astral-sh/ruff/issues/19075
+            except Exception as exc:  # ruff: ignore[blind-except] — fetch_one is a plugin extension point (totchef.cooks); logger.opt(exception=True) is loguru's own idiom for propagating the trace below, but ruff doesn't recognize the .opt() chain as a logging call: https://github.com/astral-sh/ruff/issues/19075
                 logger.opt(exception=True).debug("latest lookup for {name} failed: {exc}", name=name, exc=exc)
                 latest[name] = None
     return latest

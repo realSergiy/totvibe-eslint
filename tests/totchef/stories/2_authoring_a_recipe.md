@@ -8,7 +8,7 @@
 
 ### 2.1.1 each section maps to a cook plain vs subtable
 
-Each top-level section (`[apt_pkg]`, `[url.bun]`, `[file.grub_deep_sleep]`, …)
+Each top-level section (`[apt_pkg]`, `[url.pnpm]`, `[file.grub_deep_sleep]`, …)
 maps to a cook that manages that domain. A plain-data section is one unit of work; a
 subtable section (`[url.<name>]`) fans out to one unit per entry.
 

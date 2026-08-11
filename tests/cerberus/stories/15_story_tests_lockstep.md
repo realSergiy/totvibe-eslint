@@ -12,7 +12,7 @@
 
 ### 15.1.5 treats a nested tests directory as excluded but still checks its sibling package
 
-### 15.1.6 recognizes a workspaces object with a packages list
+### 15.1.6 treats a pnpm workspace manifest without a packages list as a single root package
 
 ## 15.2 requiring a package that exposes a public interface to carry story tests
 

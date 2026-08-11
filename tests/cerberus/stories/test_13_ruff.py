@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import pytest
@@ -7,8 +8,8 @@ import pytest
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cerberus.model import CheckResult
-    from seam_fixtures import MakeFinding, RunCheckWithFiles
+    from cerberus.model import CheckResult, Status
+    from seam_fixtures import FakeProc, MakeFinding, RunCheckWithFiles
 
 type RunRuff = Callable[..., CheckResult]
 
@@ -37,6 +38,12 @@ def run_ruff(run_check_with_files: RunCheckWithFiles) -> RunRuff:
 
 
 _OK_MESSAGE = 'ruff.toml is standalone, preview, select=["ALL"], relaxations within the sanctioned set'
+
+_RULE_LISTING = json.dumps([
+    {"name": "missing-trailing-comma", "code": "COM812"},
+    {"name": "assert", "code": "S101"},
+    {"name": "line-too-long", "code": "E501"},
+])
 
 
 def test_13_1_1_skips_repos_with_no_pyproject_file(run_ruff: RunRuff, skip: MakeFinding) -> None:
@@ -109,6 +116,49 @@ def test_13_5_2_fails_and_names_the_rule_when_an_ignore_falls_outside_the_sancti
     assert result.findings == [fail("ruff.toml ignores rules outside the sanctioned set: E501")]
 
 
+def test_13_5_3_passes_when_a_sanctioned_ignore_is_spelled_as_ruffs_rule_name(
+    run_ruff: RunRuff, fake_proc: FakeProc, ok: MakeFinding
+) -> None:
+    fake_proc.serve("ruff", stdout=_RULE_LISTING)
+
+    result = run_ruff(ruff=_RUFF_CANONICAL.replace('"COM812"', '"missing-trailing-comma"'))
+
+    assert result.findings == [ok(_OK_MESSAGE)]
+
+
+def test_13_5_4_fails_and_echoes_the_spelling_when_an_ignore_spelled_as_a_rule_name_is_unsanctioned(
+    run_ruff: RunRuff, fake_proc: FakeProc, fail: MakeFinding
+) -> None:
+    fake_proc.serve("ruff", stdout=_RULE_LISTING)
+
+    result = run_ruff(ruff=_RUFF_CANONICAL.replace('"S607"]', '"S607", "line-too-long"]'))
+
+    assert result.findings == [fail("ruff.toml ignores rules outside the sanctioned set: line-too-long")]
+
+
+def test_13_5_5_errors_when_ruff_is_not_on_path_to_resolve_a_rule_name(
+    run_ruff: RunRuff, fake_proc: FakeProc, error: MakeFinding
+) -> None:
+    fake_proc.serve_missing("ruff")
+
+    result = run_ruff(ruff=_RUFF_CANONICAL.replace('"COM812"', '"missing-trailing-comma"'))
+
+    assert result.findings == [
+        error("could not resolve the rule names in ruff.toml to their codes: `ruff` not found on PATH")
+    ]
+
+
+def test_13_5_6_errors_when_ruff_cannot_list_its_rules(
+    run_ruff: RunRuff, fake_proc: FakeProc, status: type[Status]
+) -> None:
+    fake_proc.serve("ruff", returncode=2, stderr="error: unexpected argument '--all'")
+
+    result = run_ruff(ruff=_RUFF_CANONICAL.replace('"COM812"', '"missing-trailing-comma"'))
+
+    assert result.findings[0].status == status.ERROR
+    assert result.findings[0].message.startswith("could not resolve the rule names in ruff.toml to their codes:")
+
+
 def test_13_6_1_passes_when_there_are_no_per_file_ignores(run_ruff: RunRuff, ok: MakeFinding) -> None:
     ruff = _RUFF_CANONICAL.split("\n[lint.per-file-ignores]", maxsplit=1)[0] + "\n"
 
@@ -137,6 +187,16 @@ def test_13_6_4_fails_and_names_the_rule_when_a_test_relaxation_falls_outside_th
     assert result.findings == [
         fail("per-file-ignores `**/tests/**` relaxes rules outside the sanctioned test set: ANN401")
     ]
+
+
+def test_13_6_5_passes_when_a_sanctioned_test_relaxation_is_spelled_as_ruffs_rule_name(
+    run_ruff: RunRuff, fake_proc: FakeProc, ok: MakeFinding
+) -> None:
+    fake_proc.serve("ruff", stdout=_RULE_LISTING)
+
+    result = run_ruff(ruff=_RUFF_CANONICAL.replace('"S101"]', '"assert"]'))
+
+    assert result.findings == [ok(_OK_MESSAGE)]
 
 
 def test_13_7_1_passes_when_preview_select_and_both_ignore_sets_are_fully_compliant(

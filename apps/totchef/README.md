@@ -117,7 +117,7 @@ sees the rest:
 
 Any entry may also carry a `pre_hook` (a guard: a non-zero exit **skips** the step)
 and a `post_hook` (a shell command run **only when the step changed something**) —
-on a versioned section like `[bun]` these gate and follow the whole sync, on a
+on a versioned section like `[pnpm]` these gate and follow the whole sync, on a
 per-resource section like `[file.<name>]` they gate and follow each resource.
 
 A temporary entry (a pinned workaround waiting on an upstream fix) may declare its
@@ -165,7 +165,7 @@ the box:
 | `[url.<name>]` | vendor `curl \| bash` installers | `url`, `bin`, `args`, `update_action`, `update_guard` |
 | `[cargo]` | Rust crates via `cargo-binstall` | `packages` |
 | `[uv]` | Python CLI tools in isolated venvs | `packages` |
-| `[bun]` | global npm packages via `bun add -g` | `packages` |
+| `[pnpm]` | global npm packages via `pnpm add -g` | `packages` |
 | `[file.<name>]` | install a file with exact content | `path`, `source` or `content`, `mode`, `pre_hook`, `post_hook` |
 | `[conf.<name>]` | own specific lines of a config file | `target`, `line` or `lines`, `pre_hook`, `post_hook` |
 | `[bash.<name>]` | idempotent shell snippets | `current_state`, `desired_state`, `apply`, `pre_hook`, `post_hook` |

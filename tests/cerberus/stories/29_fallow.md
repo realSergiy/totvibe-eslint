@@ -12,13 +12,17 @@
 
 ### 29.2.3 fails with the issue count when fallow dead-code reports issues
 
-### 29.2.4 errors when bunx is not on PATH
+### 29.2.4 errors when pnpx is not on PATH
 
 ## 29.3 enforcing fallow's complexity thresholds
 
 ### 29.3.1 fails listing each function fallow health flags above its thresholds
 
 ### 29.3.2 fails listing only the metrics fallow reported when coverage data is absent
+
+Each analysis writes its report to a file via fallow's own `--output-file` rather than being read off stdout: relaying a large JSON report through the `pnpx` -> fallow subprocess pipe chain has been observed to truncate silently at a pipe-buffer-sized boundary on real-world repos, and a truncated report is unparseable JSON — indistinguishable, without this fix, from a genuine fallow crash. The rerun-hint fallback stays reserved for that genuine-crash case: a fallow exit with no readable report on disk at all.
+
+### 29.3.3 falls back to the rerun hint only when fallow crashes without writing a report
 
 ## 29.4 surfacing fallow's health status line
 
@@ -32,9 +36,11 @@ Tests are as load-bearing as production code, so the cerberus-owned config also 
 
 ### 29.5.1 shields fallow behind a cerberus-owned config ignoring workspace dirs without a package.json
 
-### 29.5.2 errors when package.json is not valid JSON instead of crashing
+### 29.5.2 leaves out workspace dirs the manifest excludes
 
-### 29.5.3 switches off fallow's default duplicate ignores so test files count
+### 29.5.3 errors when the pnpm workspace manifest is not valid YAML instead of crashing
+
+### 29.5.4 switches off fallow's default duplicate ignores so test files count
 
 ## 29.6 itemizing dead-code issues in verbose runs
 
@@ -44,8 +50,26 @@ By default a dead-code failure reports only the issue count and defers to a loca
 
 ### 29.6.2 keeps the count-and-rerun-hint failure without verbose
 
+Fallow's report envelope carries several sibling fields alongside the actual issue-category arrays (`entry_points`, `workspace_diagnostics`, `next_steps`, and other run metadata); itemization only walks the real categories, and it names each entry by whichever field fallow actually uses for that category (`export_name`, `package_name`, or a `parent_name`/`member_name` pair), not just `name`.
+
+### 29.6.3 itemizes a dependency by its real field name and ignores envelope metadata
+
 ## 29.7 running fallow at the version pinned in cerberus source
 
-A bare `bunx fallow` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — analyzes with the same tool.
+A bare `pnpx fallow` floats to npm's latest and drifts per machine; the check invokes the exact version pinned in cerberus's `tool_pins` module, so every run — local or CI, any repo — analyzes with the same tool.
 
 ### 29.7.1 invokes fallow at the pinned version
+
+## 29.8 capping inline itemization size for oversized reports
+
+Itemizing every offender inline is unreadable past a screenful, so both analyses cap how many lines they print: below the cap, itemization stays inline exactly as before; past it, the check stops itemizing and instead persists the already-parsed report to a gitignored `.reports/` directory under the repo root, failing with a single line that points at the file it wrote. Dead-code's `--verbose` gate still decides whether it itemizes at all — a non-verbose dead-code failure stays a bare count and rerun hint, and never writes a report, regardless of size.
+
+### 29.8.1 itemizes complexity offenders inline up to the cap
+
+### 29.8.2 persists the full health report and points to it once offenders exceed the cap
+
+### 29.8.3 itemizes dead-code issues inline up to the cap in verbose mode
+
+### 29.8.4 persists the full dead-code report and points to it once issues exceed the cap in verbose mode
+
+### 29.8.5 never persists a dead-code report without verbose even past the cap

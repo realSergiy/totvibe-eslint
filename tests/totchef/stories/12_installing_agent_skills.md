@@ -1,7 +1,7 @@
 # 12. [Installing agent skills](test_12_installing_agent_skills.py)
 
 `[skills]` declares GitHub repos of Claude Code skills to keep installed, wrapping
-the `skills` CLI (skills.sh) through `bunx` — the same tool an operator would
+the `skills` CLI (skills.sh) through `pnpx` — the same tool an operator would
 otherwise run by hand for each repo. totchef owns the declaration; the CLI owns
 fetching and writing: skill files live once in the canonical `~/.agents/skills`
 store — the source of truth any agent can share — with `~/.claude/skills/<skill>`
@@ -18,15 +18,15 @@ what's installed.
 ### 12.1.1 skills installs each declared repo via the skills cli
 
 `[skills] repos = [...]` installs each repo globally via
-`bunx skills add <repo> -g --agent claude-code universal --skill '*' -y`, one
+`pnpx skills add <repo> -g --agent claude-code universal --skill '*' -y`, one
 repo at a time. The extra `universal` target keeps the CLI in symlink mode — a
 single-agent add silently switches to copy mode, stranding the canonical store.
 
-### 12.1.2 skills requires bun and bunx and fails hard pointing at url bun
+### 12.1.2 skills requires pnpm and pnpx and fails hard pointing at url pnpm
 
-Requires both `bunx` (runs the `skills` CLI) and `bun` (links a cli-kind skill's
-binary — see 12.1.9) to be present, depending on the `[url]` bun installer; if
-either is missing, the run fails hard telling the operator the `[url]` bun install
+Requires both `pnpx` (runs the `skills` CLI) and `pnpm` (links a cli-kind skill's
+binary — see 12.1.9) to be present, depending on the `[url]` pnpm installer; if
+either is missing, the run fails hard telling the operator the `[url]` pnpm install
 must run first.
 
 ### 12.1.3 each skill gets its own report row with version and content id
@@ -74,10 +74,10 @@ repos run concurrently rather than one after another.
 A skill that ships its own `package.json` with a `bin` entry (a "cli"-kind skill,
 e.g. `peek`) gets its files installed by the `skills` CLI, but the CLI never
 chmods that binary executable or puts it on PATH. On every sync the cook chmods
-each installed skill's declared `bin` script(s) executable and runs `bun link`
+each installed skill's declared `bin` script(s) executable and runs `pnpm link`
 from within the skill's canonical store directory, so the binary resolves on PATH.
 A package.json without a `bin` entry is not a CLI and is left unlinked.
-This is best-effort and idempotent, like bun's own node shim (§4.3.4): it runs
+This is best-effort and idempotent: it runs
 even on a converged re-run that skipped the CLI entirely (12.1.11), so the link
 is restored if it was removed.
 

@@ -1,5 +1,6 @@
 {
-  "extends": "@zyplux/tsconfig/bun.json",
+  "extends": "@zyplux/tsconfig/node.json",
+  "compilerOptions": { "rootDir": "src" },
   "include": ["src"],
   "references": [{ "path": "../../packages/util-ts" }]
 }

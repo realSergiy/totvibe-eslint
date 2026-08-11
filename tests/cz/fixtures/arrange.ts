@@ -1,7 +1,9 @@
-import type { FetchFake, ShellFake, TempDir } from '@zyplux/tests-fixtures';
+import type { FetchFake } from '@zyplux/tests-fixtures/fetch';
+import type { TempDir } from '@zyplux/tests-fixtures/fs';
+import type { ShellFake } from '@zyplux/tests-fixtures/shell';
 
 import { ManifestSchema } from '@zyplux/cz/contracts';
-import { notFoundResponse, okResponse } from '@zyplux/tests-fixtures';
+import { notFoundResponse, okResponse } from '@zyplux/tests-fixtures/fetch';
 import { parseToml } from '@zyplux/util';
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
@@ -9,7 +11,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-export const workspaceRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const workspaceRoot = fileURLToPath(new URL('../../../', import.meta.url));
 
 export type LiveWorkspace = {
   root: string;
@@ -163,7 +165,6 @@ export const createRegistries = (network: FetchFake) =>
         return pypiEverVisible === false ? notFoundResponse() : okResponse();
       });
       network.on('https://registry.npmjs.org/', () => (npmPublished ? okResponse() : notFoundResponse()));
-      network.otherwise(() => notFoundResponse());
     },
   }) satisfies Registries;
 

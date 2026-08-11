@@ -1,16 +1,19 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { test as base, vi } from 'vitest';
 
-import type { ConsoleCapture } from './console';
-import type { FetchFake } from './fetch';
-import type { TempDir } from './fs';
-import type { PromptFake } from './prompt';
-import type { ShellFake } from './shell';
+import type { ConsoleCapture } from './console.ts';
+import type { FetchFake } from './fetch.ts';
+import type { TempDir } from './fs.ts';
+import type { PromptFake } from './prompt.ts';
+import type { ShellFake } from './shell.ts';
 
-import { createConsoleCapture } from './console';
-import { createFetchFake } from './fetch';
-import { createTempDir } from './fs';
-import { createPromptFake } from './prompt';
-import { createShellFake } from './shell';
+import './matchers.ts';
+import { createConsoleCapture } from './console.ts';
+import { createFetchFake } from './fetch.ts';
+import { createTempDir } from './fs.ts';
+import { createPromptFake } from './prompt.ts';
+import { requireMockedModule } from './require-mocked-module.ts';
+import { createShellFake } from './shell.ts';
 
 export type EnvStub = {
   set: (name: string, value: string) => void;
@@ -69,12 +72,12 @@ export const cliTest = libraryTest.extend<CliFixtures>({
   },
   instantSleep: [
     async ({}, use) => {
-      const originalSleep = Bun.sleep;
-      Bun.sleep = () => Promise.resolve();
+      requireMockedModule(sleep, 'node:timers/promises', 'setTimeout');
+      vi.mocked(sleep).mockResolvedValue(undefined);
       try {
         await use(undefined);
       } finally {
-        Bun.sleep = originalSleep;
+        vi.mocked(sleep).mockReset();
       }
     },
     { auto: true },
@@ -91,15 +94,18 @@ export const cliTest = libraryTest.extend<CliFixtures>({
     },
     { auto: true },
   ],
-  network: async ({}, use) => {
-    const network = createFetchFake();
-    const restore = network.install();
-    try {
-      await use(network);
-    } finally {
-      restore();
-    }
-  },
+  network: [
+    async ({}, use) => {
+      const network = createFetchFake();
+      const restore = network.install();
+      try {
+        await use(network);
+      } finally {
+        restore();
+      }
+    },
+    { auto: true },
+  ],
   prompt: async ({}, use) => {
     const prompt = createPromptFake();
     const restore = prompt.install();

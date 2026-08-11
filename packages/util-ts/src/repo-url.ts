@@ -1,4 +1,4 @@
-import { attempt } from './result';
+import { attempt } from './result.ts';
 
 const toHttpsRepoUrl = (value: string) => {
   const ssh = /^git@([^:]+):(.+)$/.exec(value);

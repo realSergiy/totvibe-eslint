@@ -98,12 +98,12 @@ when every other rule is satisfied.
 
 Managed tools (`ruff`, `rumdl`, `pytest`, `eslint`, ...) must never be invoked
 bare in a recipe body, because a bare call relies on an ambient install
-instead of the project's `uv run`/`bunx` wrapper.
+instead of the project's `uv run`/`pnpx` wrapper.
 
 ### 1.5.1 fails and names the tool when a recipe calls it directly
 
 A recipe body that leads with a managed tool's own command (e.g. `lint:` running
-`rumdl check` instead of `bun run lint`) fails the check, and the failure
+`rumdl check` instead of `pnpm run lint`) fails the check, and the failure
 message names the offending tool.
 
 ## 1.6 keeping recipe lines free of trailing whitespace
@@ -247,26 +247,26 @@ own `.gitignore` instead of a hand-maintained list.
 A `clean` recipe whose body runs a hardcoded `rm`/`find` pipeline instead of
 `cz clean` fails the check, even though the recipe itself is present.
 
-### 1.11.2 passes when the clean recipe runs cz clean via bun run
+### 1.11.2 passes when the clean recipe runs cz clean via pnpm run
 
-The baseline's own invocation style, `bun run cz clean {{ flags }}`, satisfies
+The baseline's own invocation style, `pnpm run cz clean {{ flags }}`, satisfies
 the check.
 
 ### 1.11.3 passes when the clean recipe invokes cz clean directly
 
 A `clean` recipe that calls the installed `cz clean` binary directly, without
-`bun run`, also satisfies the check.
+`pnpm run`, also satisfies the check.
 
 ### 1.11.4 does not count a mere mention of cz clean
 
 The words `cz clean` inside a shell comment or as an argument to an unrelated
 command (`echo "cz clean is nice"`) are not an invocation: only `cz clean` in
-command position, or carried immediately after a runner (`bun`, `bunx`),
+command position, or carried immediately after a runner (`pnpm`, `pnpx`),
 satisfies the check.
 
 ### 1.11.5 does not count a runner wrapping an unrelated command
 
 A runner segment that happens to be followed by the words `cz clean` later on
-without actually invoking them (`bun run echo cz clean`, which runs `echo`)
+without actually invoking them (`pnpm run echo cz clean`, which runs `echo`)
 is not a `cz clean` invocation: only the exact shapes the org's repos use —
-`cz clean`, `bun run cz clean`, `bunx cz clean` — satisfy the check.
+`cz clean`, `pnpm run cz clean`, `pnpx cz clean` — satisfy the check.

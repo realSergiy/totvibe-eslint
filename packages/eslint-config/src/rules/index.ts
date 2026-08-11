@@ -2,19 +2,20 @@ import preferArrowFunctions from 'eslint-plugin-prefer-arrow-functions';
 
 import { castToEslintRule, type EslintRule } from '#create-rule';
 
-import { noAnonymousParamType } from './syntactic/no-anonymous-param-type';
-import { noIdentityCast } from './syntactic/no-identity-cast';
-import { noTypePredicate } from './syntactic/no-type-predicate';
-import { testSeamOnlyImports } from './syntactic/test-seam-only-imports';
-import { typeOverInterface } from './syntactic/type-over-interface';
-import { contractsOnlySchemas } from './type-aware/contracts-only-schemas';
-import { noReturnArrayPush } from './type-aware/no-return-array-push';
-import { noSchemasOutsideContracts } from './type-aware/no-schemas-outside-contracts';
-import { noStrayPascalConst } from './type-aware/no-stray-pascal-const';
-import { noTypeAnnotations } from './type-aware/no-type-annotations';
-import { noUnvalidatedJson } from './type-aware/no-unvalidated-json';
-import { noZodCustom } from './type-aware/no-zod-custom';
-import { preferDestructuredParams } from './type-aware/prefer-destructured-params';
+import { fixtureRoleImports } from './syntactic/fixture-role-imports.ts';
+import { noAnonymousParamType } from './syntactic/no-anonymous-param-type.ts';
+import { noIdentityCast } from './syntactic/no-identity-cast.ts';
+import { noTypePredicate } from './syntactic/no-type-predicate.ts';
+import { testSeamOnlyImports } from './syntactic/test-seam-only-imports.ts';
+import { typeOverInterface } from './syntactic/type-over-interface.ts';
+import { contractsOnlySchemas } from './type-aware/contracts-only-schemas.ts';
+import { noReturnArrayPush } from './type-aware/no-return-array-push.ts';
+import { noSchemasOutsideContracts } from './type-aware/no-schemas-outside-contracts.ts';
+import { noStrayPascalConst } from './type-aware/no-stray-pascal-const.ts';
+import { noTypeAnnotations } from './type-aware/no-type-annotations.ts';
+import { noUnvalidatedJson } from './type-aware/no-unvalidated-json.ts';
+import { noZodCustom } from './type-aware/no-zod-custom.ts';
+import { preferDestructuredParams } from './type-aware/prefer-destructured-params.ts';
 
 const upstreamPreferArrowFunctions = preferArrowFunctions.rules['prefer-arrow-functions'];
 if (!upstreamPreferArrowFunctions) {
@@ -23,6 +24,7 @@ if (!upstreamPreferArrowFunctions) {
 
 export const rules: Record<string, EslintRule> = {
   'contracts-only-schemas': contractsOnlySchemas,
+  'fixture-role-imports': fixtureRoleImports,
   'no-anonymous-param-type': noAnonymousParamType,
   'no-identity-cast': noIdentityCast,
   'no-return-array-push': noReturnArrayPush,

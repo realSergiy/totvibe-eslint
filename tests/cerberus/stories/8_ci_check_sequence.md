@@ -18,17 +18,13 @@
 
 ### 8.3.3 fails when the required python steps run out of canonical order
 
-## 8.4 requiring the typescript pipeline to run every step in canonical order within the org container
+## 8.4 requiring the typescript pipeline to run every step in canonical order
 
-### 8.4.1 passes a ts ci workflow that runs every required step in order within the org container
+### 8.4.1 passes a ts ci workflow that runs every required step in order
 
 ### 8.4.2 fails when a required ts step is missing or does not match its required command
 
 ### 8.4.3 fails when the required ts steps run out of canonical order
-
-### 8.4.4 fails when the ts job does not run in the org container
-
-### 8.4.5 passes when the container is declared as a mapping with an image key
 
 ## 8.5 matching only commands that actually run
 

@@ -1,19 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 
 
-class Status(Enum):
+class Status(IntEnum):
+    """A check's outcome, ordered least to most severe so statuses compare directly."""
+
     PASS = auto()
     SKIP = auto()
     FAIL = auto()
     ERROR = auto()
-
-    @property
-    def rank(self) -> int:
-        order = (Status.PASS, Status.SKIP, Status.FAIL, Status.ERROR)
-        return order.index(self)
 
 
 class Scope(Enum):
@@ -61,8 +58,8 @@ class CheckResult:
     def status(self) -> Status:
         if not self.findings:
             return Status.PASS
-        return max((f.status for f in self.findings), key=lambda s: s.rank)
+        return max(f.status for f in self.findings)
 
     @property
     def problems(self) -> list[Finding]:
-        return [f for f in self.findings if f.status.rank >= Status.FAIL.rank]
+        return [f for f in self.findings if f.status >= Status.FAIL]

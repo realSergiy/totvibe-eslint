@@ -2,9 +2,10 @@ import { ensure } from '@zyplux/util';
 
 import type { InferValue } from '#optique';
 
-import { publishNpm } from '#commands/publish-tagged-target';
 import { argument, command, constant, message, object, string } from '#optique';
 import { loadReleaseTargets } from '#release-targets';
+
+import { publishNpm } from './publish-tagged-target.ts';
 
 const labelArgument = argument(string({ metavar: 'LABEL' }), {
   description: message`npm target label to first-publish, e.g. @zyplux/util.`,
@@ -34,7 +35,7 @@ export const runBootstrapNpmTarget = async ({ label }: BootstrapNpmTargetConfig)
   }
 
   console.log(`Bootstrapping ${label} ${version} to npm ...`);
-  await publishNpm(target.dir);
+  await publishNpm(target.dir, label, version);
   console.log(
     `Published ${label} ${version}. Enable its trusted publisher on npmjs.com; later releases publish via OIDC.`,
   );

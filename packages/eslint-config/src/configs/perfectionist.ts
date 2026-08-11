@@ -1,6 +1,6 @@
 import perfectionist from 'eslint-plugin-perfectionist';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 export const perfectionistConfig: ConfigWithExtends = {
   extends: [perfectionist.configs['recommended-natural']],

@@ -13,7 +13,12 @@ _NEIGHBOR_LIMIT = 20
 def _connections(graph: nx.DiGraph[str], node_id: str) -> list[tuple[str, str, dict[str, Any]]]:
     outgoing = [("out", target, graph.edges[node_id, target]) for target in graph.successors(node_id)]
     incoming = [("in", source, graph.edges[source, node_id]) for source in graph.predecessors(node_id)]
-    return sorted(outgoing + incoming, key=lambda item: (-graph.degree(item[1]), item[1]))
+
+    def rank_by_degree(connection: tuple[str, str, dict[str, Any]]) -> tuple[int, str]:
+        neighbor_id = connection[1]
+        return (-graph.degree(neighbor_id), neighbor_id)
+
+    return sorted(outgoing + incoming, key=rank_by_degree)
 
 
 def explain_text(graph: nx.DiGraph[str], query: str) -> str:

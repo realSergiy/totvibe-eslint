@@ -6,7 +6,7 @@ Verifies repository invariants — CI workflow structure, justfile and dependenc
 
 - [`uv`](https://docs.astral.sh/uv/) and Python 3.14
 
-The `justfile` bite shells out to `just`, which ships with the package (via [`rust-just`](https://pypi.org/project/rust-just/)) — no separate install. The `jscpd` and `fallow` bites run their tools via `bunx` at exact versions pinned in [`tool_pins.py`](src/cerberus/tool_pins.py), so every cerberus release measures with the same tools everywhere; `bunx` (bun) must be on PATH.
+The `justfile` bite shells out to `just`, which ships with the package (via [`rust-just`](https://pypi.org/project/rust-just/)) — no separate install. The `jscpd` and `fallow` bites run their tools via `pnpx` at exact versions pinned in [`tool_pins.py`](src/cerberus/tool_pins.py), so every cerberus release measures with the same tools everywhere; `pnpm` must be on PATH.
 
 ## Lint a repo
 
@@ -32,9 +32,9 @@ A repo switches a bite off with `off = true` in that bite's `cerberus.toml` tabl
 | ------------------------------ | ----------- | ----------------------------------------------------------------------------------- |
 | `justfile`                     | content     | Canonical baseline block (byte-exact, `--fix`able), recipe names, aliases, `check` pipeline, local cerberus run, wrapped tool calls, no trailing whitespace |
 | `ci_workflow_gate`             | content     | `ci.yml` exists, exposes a `ci` check, runs on PRs (push to `main` recommended)      |
-| `ci_check_sequence`            | content     | `ci.yml` runs the canonical check sequence per stack, in the org container          |
+| `ci_check_sequence`            | content     | `ci.yml` runs the canonical check sequence per stack          |
 | `ci_cerberus_step`             | content     | A CI workflow runs cerberus to self-verify org invariants                           |
-| `workflow_toolchain_only`      | content     | Workflows set up only the workspace toolchain (uv, bun), not extra tools            |
+| `workflow_toolchain_only`      | content     | Workflows set up only the workspace toolchain (uv, pnpm), not extra tools            |
 | `pyrefly`                      | content     | All code, tests included, type-checks under strict pyrefly with no relaxations       |
 | `ruff`                         | content     | ruff runs standalone in preview with `select = ["ALL"]`; relaxations stay sanctioned |
 | `line_length`                  | content     | ruff `line-length` and prettier `printWidth` both match the configured width (120)   |

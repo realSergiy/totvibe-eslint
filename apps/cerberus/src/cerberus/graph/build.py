@@ -85,9 +85,14 @@ def _communities(graph: nx.Graph[str]) -> list[list[str]]:
     return [sorted(community) for community in nx.community.louvain_communities(graph, seed=42)]
 
 
+def _rank_by_centrality(scored_node: tuple[str, float]) -> tuple[float, str]:
+    node_id, centrality = scored_node
+    return (-centrality, node_id)
+
+
 def _god_nodes(graph: nx.Graph[str], limit: int = _GOD_NODE_LIMIT) -> list[str]:
     if graph.number_of_nodes() == 0:
         return []
     centrality = cast("dict[str, float]", nx.degree_centrality(graph))
-    ranked = sorted(centrality.items(), key=lambda item: (-item[1], item[0]))
+    ranked = sorted(centrality.items(), key=_rank_by_centrality)
     return [node_id for node_id, _ in ranked[:limit]]

@@ -11,10 +11,11 @@ import {
   tryParseToml,
 } from '@zyplux/util';
 import { PackageJsonSchema, PyProjectSchema } from '@zyplux/util/contracts';
+import { readFile } from 'node:fs/promises';
 
-import type { DepsDevPackage } from '#contracts';
+import type { DepsDevPackage } from './contracts.ts';
 
-import { DepsDevPackageSchema, DepsDevVersionSchema, NpmRegistrySchema, PypiProjectSchema } from '#contracts';
+import { DepsDevPackageSchema, DepsDevVersionSchema, NpmRegistrySchema, PypiProjectSchema } from './contracts.ts';
 
 type DepReposReport = { repos: string[]; unresolved: PackageRef[] };
 
@@ -27,7 +28,7 @@ const RESOLVE_CONCURRENCY = 8;
 const byLocale = (left: string, right: string) => left.localeCompare(right);
 
 const readManifestFacts = async (file: string) => {
-  const text = await Bun.file(file).text();
+  const text = await readFile(file, 'utf8');
   if (file.endsWith('package.json')) {
     const manifest = tryParseJson(text, PackageJsonSchema);
     if (manifest === undefined) return;

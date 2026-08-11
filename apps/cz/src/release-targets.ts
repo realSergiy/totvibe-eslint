@@ -2,9 +2,9 @@ import { $, ensure, fetchJson, httpOk, parseJson, parseToml, readTrimmed } from 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { Target, VersionSource } from '#contracts';
+import type { Target, VersionSource } from './contracts.ts';
 
-import { GhcrTokenSchema, ManifestSchema, VersionFieldSchema, VersionFileSchema } from '#contracts';
+import { GhcrTokenSchema, ManifestSchema, VersionFieldSchema, VersionFileSchema } from './contracts.ts';
 
 export type ReleaseTarget = {
   dir: string;

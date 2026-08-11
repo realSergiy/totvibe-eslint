@@ -49,13 +49,6 @@ version = { file = "apps/cerberus/pyproject.toml", regex = '^version = "([^"]+)"
 surface = ["apps/cerberus/src", "apps/cerberus/pyproject.toml", "apps/cerberus/README.md"]
 
 [[target]]
-kind = "ghcr"
-label = "ghcr.io/zyplux/ci"
-tag_prefix = "ci-image-v"
-version = { file = "containers/ci/Containerfile", regex = '^LABEL org\.opencontainers\.image\.version="([^"]+)"' }
-surface = ["containers/ci"]
-
-[[target]]
 kind = "pypi"
 label = "zyplux-util"
 tag_prefix = "util-py-v"

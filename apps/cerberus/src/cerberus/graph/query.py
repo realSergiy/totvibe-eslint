@@ -102,7 +102,10 @@ def _render(graph: nx.Graph[str], nodes: set[str], edges: list[tuple[str, str]],
         used += len(line) + 1
         return True
 
-    for node_id in sorted(nodes, key=lambda n: (-graph.degree(n), n)):
+    def rank_by_degree(node_id: str) -> tuple[int, str]:
+        return (-graph.degree(node_id), node_id)
+
+    for node_id in sorted(nodes, key=rank_by_degree):
         data = graph.nodes[node_id]
         line = (
             f"NODE {data.get('label', node_id)} [src={data.get('source_file', '')} "

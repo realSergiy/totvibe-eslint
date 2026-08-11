@@ -28,7 +28,7 @@ def log_dir() -> Path:
 
 
 # The runner column names who is speaking: "chef" for the orchestrator's own
-# lines, the node id (e.g. url.bun, apt_pkg) while a cook runs — see cook_context.
+# lines, the node id (e.g. url.pnpm, apt_pkg) while a cook runs — see cook_context.
 # Width fits the longest node id so the level/message columns stay aligned.
 DEFAULT_RUNNER = Path(sys.argv[0]).stem
 
@@ -124,12 +124,27 @@ def choose_log_file() -> Path:
     return log_dir() / f"totchef-{datetime.now().astimezone():%Y%m%d-%H%M%S}.log"
 
 
+def missing_ancestors(directory: Path) -> list[Path]:
+    (
+        """The directories `mkdir(parents=True)` is about to create, innermost first — everything root """
+        """makes inside the operator's home and must hand back, or a later dropped-privilege cook cannot """
+        """write beside it (`~/.local` blocking `~/.local/share/pnpm`)."""
+    )
+    absent: list[Path] = []
+    probe = directory
+    while not probe.exists() and probe != probe.parent:
+        absent.append(probe)
+        probe = probe.parent
+    return absent
+
+
 def open_log_file() -> Path:
     (
         """Resolve the run's log file (honors SHARED_LOG_ENV, confined to the user's own log dir once root is """
         """chowning it), create it, chown to SUDO_USER; shared by both start paths."""
     )
     directory = log_dir()
+    created = missing_ancestors(directory)
     directory.mkdir(parents=True, exist_ok=True)
     sudo_user = os.environ.get("SUDO_USER")
     existing = os.environ.get(SHARED_LOG_ENV)
@@ -148,7 +163,7 @@ def open_log_file() -> Path:
     log_file.touch(exist_ok=True)
     if sudo_user:
         pw = pwd.getpwnam(sudo_user)
-        for path in (directory.parent, directory, log_file):
+        for path in dict.fromkeys([*created, directory.parent, directory, log_file]):
             os.chown(path, pw.pw_uid, pw.pw_gid)
     return log_file
 

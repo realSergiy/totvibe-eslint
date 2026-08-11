@@ -5,7 +5,7 @@ import * as ts from 'typescript';
 
 import { createRule } from '#create-rule';
 
-import { hasZodBrand } from './zod-brand';
+import { hasZodBrand } from './zod-brand.ts';
 
 const ZOD_MODULE = 'zod';
 

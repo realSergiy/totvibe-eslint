@@ -14,6 +14,7 @@ import {
   tryParseToml,
 } from '@zyplux/util';
 import { PackageJsonSchema, PyProjectSchema } from '@zyplux/util/contracts';
+import { run } from '@zyplux/util/exec';
 
 export type Shell = typeof $;
 
@@ -32,6 +33,7 @@ export const subjects = {
   pythonRequirementNames,
   readTrimmed,
   repositoryUrl,
+  run,
   tryParseToml,
 };
 

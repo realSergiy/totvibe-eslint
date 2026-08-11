@@ -1,5 +1,5 @@
-#!/usr/bin/env bun
-import { runCz } from '#cli';
+#!/usr/bin/env node
+import { runCz } from './cli.ts';
 
 const ARGV_SCRIPT_ARGS_START = 2;
 const args = process.argv.slice(ARGV_SCRIPT_ARGS_START);

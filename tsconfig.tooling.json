@@ -1,5 +1,9 @@
 {
-  "extends": "@zyplux/tsconfig/bun.json",
-  "include": ["eslint.config.ts", "prettier.config.ts", "vitest.config.ts"],
-  "references": [{ "path": "./packages/eslint-config" }]
+  "extends": "@zyplux/tsconfig/node.json",
+  "include": ["eslint.config.ts", "prettier.config.ts", "vitest.config.ts", "tests/vitest.setup.ts"],
+  "references": [
+    {
+      "path": "./packages/eslint-config"
+    }
+  ]
 }

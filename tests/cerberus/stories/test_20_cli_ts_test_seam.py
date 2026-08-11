@@ -15,7 +15,7 @@ type RunCliTsTests = Callable[[dict[str, str]], CheckResult]
 
 CHECK_ID = "cli_ts_test_seam"
 
-_SEAM_ROOT_WS = '{"workspaces": ["apps/*", "packages/*"]}'
+_SEAM_ROOT_WS = {"package.json": "{}", "pnpm-workspace.yaml": "packages:\n  - apps/*\n  - packages/*\n"}
 _SEAM_LIBRARY = '{"name": "@demo/lib", "exports": {".": "./src/index.ts", "./helpers": "./src/helpers.ts"}}'
 _SEAM_CLI = (
     '{"name": "@demo/cli", "bin": {"cli": "./src/index.ts"},'
@@ -67,7 +67,7 @@ def test_20_1_1_skips_repos_with_no_typescript_packages(run_cli_ts_tests: RunCli
 
 def test_20_1_2_skips_workspaces_with_no_cli_app(run_cli_ts_tests: RunCliTsTests, skip: MakeFinding) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "packages/lib/package.json": _SEAM_LIBRARY,
     })
     assert result.findings == [skip("no cli apps")]
@@ -77,7 +77,7 @@ def test_20_2_1_passes_a_cli_app_that_exports_only_the_root_seam(
     run_cli_ts_tests: RunCliTsTests, ok: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI,
     })
     assert result.findings == [ok(_SEAM_OK)]
@@ -85,7 +85,7 @@ def test_20_2_1_passes_a_cli_app_that_exports_only_the_root_seam(
 
 def test_20_2_2_fails_a_cli_app_that_declares_no_exports(run_cli_ts_tests: RunCliTsTests, fail: MakeFinding) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_NO_EXPORTS,
     })
     assert result.findings == [
@@ -99,7 +99,7 @@ def test_20_2_3_fails_and_names_each_export_beyond_the_root_seam(
     run_cli_ts_tests: RunCliTsTests, fail: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_LEAKY,
     })
     assert result.findings == [
@@ -113,7 +113,7 @@ def test_20_2_4_fails_a_cli_app_whose_exports_omit_the_root_entry(
     run_cli_ts_tests: RunCliTsTests, fail: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_NO_ROOT,
     })
     assert result.findings == [fail("apps/cli/package.json: cli app exports must include the '.' root seam")]
@@ -121,7 +121,7 @@ def test_20_2_4_fails_a_cli_app_whose_exports_omit_the_root_entry(
 
 def test_20_2_5_accepts_a_conditions_object_as_the_root_seam(run_cli_ts_tests: RunCliTsTests, ok: MakeFinding) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_CONDITIONS,
     })
     assert result.findings == [ok(_SEAM_OK)]
@@ -131,7 +131,7 @@ def test_20_2_6_accepts_a_contracts_seam_mapping_to_the_contracts_module(
     run_cli_ts_tests: RunCliTsTests, ok: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_CONTRACTS,
     })
     assert result.findings == [ok(_SEAM_OK)]
@@ -139,7 +139,7 @@ def test_20_2_6_accepts_a_contracts_seam_mapping_to_the_contracts_module(
 
 def test_20_2_7_fails_a_contracts_seam_mapping_elsewhere(run_cli_ts_tests: RunCliTsTests, fail: MakeFinding) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI_CONTRACTS_ASTRAY,
     })
     assert result.findings == [
@@ -153,7 +153,7 @@ def test_20_3_1_passes_story_tests_importing_only_fixture_aliases_and_node_built
     run_cli_ts_tests: RunCliTsTests, ok: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI,
         "tests/cli/package.json": _SEAM_TESTS_PKG,
         "tests/cli/stories/1-first.test.ts": _SEAM_CLEAN_STORY,
@@ -165,7 +165,7 @@ def test_20_3_2_fails_a_story_test_importing_the_app_package_directly(
     run_cli_ts_tests: RunCliTsTests, fail: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI,
         "tests/cli/package.json": _SEAM_TESTS_PKG,
         "tests/cli/stories/1-first.test.ts": _SEAM_APP_IMPORT_STORY,
@@ -181,7 +181,7 @@ def test_20_3_3_fails_a_story_test_reaching_into_app_internals_via_a_relative_pa
     run_cli_ts_tests: RunCliTsTests, fail: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI,
         "tests/cli/package.json": _SEAM_TESTS_PKG,
         "tests/cli/stories/1-first.test.ts": _SEAM_RELATIVE_ESCAPE_STORY,
@@ -198,7 +198,7 @@ def test_20_4_1_fails_an_imports_alias_that_escapes_the_test_package(
     run_cli_ts_tests: RunCliTsTests, fail: MakeFinding
 ) -> None:
     result = run_cli_ts_tests({
-        "package.json": _SEAM_ROOT_WS,
+        **_SEAM_ROOT_WS,
         "apps/cli/package.json": _SEAM_CLI,
         "tests/cli/package.json": _SEAM_TESTS_PKG_SNEAKY,
         "tests/cli/stories/1-first.test.ts": _SEAM_CLEAN_STORY,

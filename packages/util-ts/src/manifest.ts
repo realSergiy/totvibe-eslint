@@ -1,10 +1,10 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { PackageJson, PyProject } from './contracts';
+import type { PackageJson, PyProject } from './contracts.ts';
 
-import { attemptAsync } from './result';
-import { $ } from './shell';
+import { attemptAsync } from './result.ts';
+import { $ } from './shell.ts';
 
 const LOCAL_NPM_PROTOCOL = /^(file|link|portal|workspace):/;
 const PYTHON_REQUIREMENT_NAME = /^\s*([A-Za-z0-9][A-Za-z0-9._-]*)/;

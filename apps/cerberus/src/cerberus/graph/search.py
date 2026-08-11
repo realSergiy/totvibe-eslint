@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+from functools import partial
 from typing import TYPE_CHECKING, Any, NamedTuple
 
 if TYPE_CHECKING:
@@ -57,6 +58,13 @@ def _term_weights(graph: nx.Graph[str], terms: list[str]) -> dict[str, float]:
     return {term: math.log(1 + node_count / (1 + count)) for term, count in document_frequency.items()}
 
 
+def _rank_best_first(graph: nx.Graph[str], scored_node: tuple[float, str]) -> tuple[float, int, str]:
+    """Highest score first, then the shortest label, then the node id — a total order, so ties never wobble."""
+    score, node_id = scored_node
+    label = str(graph.nodes[node_id].get("label", node_id))
+    return (-score, len(label), node_id)
+
+
 def score_nodes(graph: nx.Graph[str], text: str) -> list[tuple[float, str]]:
     """Score every node against free text: substring/token match weighted by
     inverse document frequency, no trigram indexing.
@@ -90,7 +98,7 @@ def score_nodes(graph: nx.Graph[str], text: str) -> list[tuple[float, str]]:
                 score += _TERM_SUBSTRING_SCORE * weight
         if score > 0:
             scored.append((score, node_id))
-    scored.sort(key=lambda item: (-item[0], len(str(graph.nodes[item[1]].get("label", item[1]))), item[1]))
+    scored.sort(key=partial(_rank_best_first, graph))
     return scored
 
 

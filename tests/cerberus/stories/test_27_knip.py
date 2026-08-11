@@ -29,6 +29,9 @@ _BASE_DEPENDENCY_OUTSIDE_ALLOWANCE = '{"ignoreDependencies": ["cloudflare", "lef
 _ENTRY_EXPORTS_OK = '{"includeEntryExports": true, "ignoreWorkspaces": ["tests/*"]}'
 _ENTRY_EXPORTS_NOT_TRUE = '{"includeEntryExports": false, "ignoreWorkspaces": ["tests/*"]}'
 _ENTRY_EXPORTS_WRONG_IGNORE = '{"includeEntryExports": true, "ignoreWorkspaces": ["test/*"]}'
+_ENTRY_EXPORTS_IGNORE_DEEP_GLOB = '{"includeEntryExports": true, "ignoreWorkspaces": ["tests/**"]}'
+_ENTRY_EXPORTS_IGNORE_PRODUCTION = '{"includeEntryExports": true, "ignoreWorkspaces": ["tests/*", "packages/*"]}'
+_ENTRY_EXPORTS_IGNORE_NOT_A_LIST = '{"includeEntryExports": true, "ignoreWorkspaces": "tests/*"}'
 _ENTRY_EXPORTS_STRAY_KEY = '{"includeEntryExports": true, "ignoreWorkspaces": ["tests/*"], "extra": true}'
 _ENTRY_EXPORTS_MISSING_OVERRIDE = _ENTRY_EXPORTS_OK
 _ENTRY_EXPORTS_EXTRA_OVERRIDE = (
@@ -77,47 +80,80 @@ _RELEASE_TARGETS_MIXED_KINDS = (
 
 _OK = "knip.json (if any) stays within the shared allowances; knip.prod.json exactly exempts every published npm target"
 
+_REPO_LAYOUT = {
+    "package.json": _PKG_NO_KNIP,
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - 'tests/*'\n",
+    "packages/lib/package.json": '{"name": "@demo/lib"}',
+    "tests/lib/package.json": '{"name": "@demo/tests-lib"}',
+}
+_NESTED_TESTS_LAYOUT = {
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - 'tests/**'\n",
+    "tests/suite/e2e/package.json": '{"name": "@demo/e2e"}',
+}
+_EXCLUDED_TOOL_LAYOUT = {
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - 'tests/*'\n  - 'tools/*'\n  - '!tools/scratch'\n",
+    "tools/scratch/package.json": '{"name": "@demo/scratch"}',
+}
+_EXCLUDED_TOOL_SUBTREE_LAYOUT = {
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - 'tests/*'\n  - 'tools/*'\n  - '!tools/**'\n",
+    "tools/scratch/package.json": '{"name": "@demo/scratch"}',
+}
+_TOOLS_LAYOUT = {
+    "pnpm-workspace.yaml": "packages:\n  - 'packages/*'\n  - 'tests/*'\n  - 'tools/*'\n",
+    "tools/lint/package.json": '{"name": "@demo/lint"}',
+}
+
+_TOOLS_ARE_PRODUCTION = '[knip]\nprod_workspaces = ["apps/*", "packages/*", "tools/*"]\n'
+
 
 @pytest.fixture
 def run_knip_config(run_check_with_files: RunCheckWithFiles) -> RunKnipConfig:
+    """Run the check against a repo laid out the org way: a `packages/` product, a `tests/` harness member.
+
+    `layout` overlays that default repo — a path mapped to None reads as absent.
+    """
+
     def _run(
         *,
-        package_json: str | None = _PKG_NO_KNIP,
         knip: str | None = None,
         prod: str | None = None,
         release_targets: str | None = None,
+        layout: dict[str, str | None] | None = None,
+        config_toml: str | None = None,
     ) -> CheckResult:
         files = {
-            "package.json": package_json,
+            **_REPO_LAYOUT,
+            **(layout or {}),
             "knip.json": knip,
             "knip.prod.json": prod,
             "release-targets.toml": release_targets,
         }
-        return run_check_with_files(CHECK_ID, {path: content for path, content in files.items() if content is not None})
+        present = {path: content for path, content in files.items() if content is not None}
+        return run_check_with_files(CHECK_ID, present, config_toml)
 
     return _run
 
 
 def test_27_1_1_skips_repos_with_no_package_json(run_knip_config: RunKnipConfig, skip: MakeFinding) -> None:
-    result = run_knip_config(package_json=None)
+    result = run_knip_config(layout={"package.json": None})
     assert result.findings == [skip("no package.json")]
 
 
 def test_27_1_2_errors_when_package_json_cannot_be_parsed(run_knip_config: RunKnipConfig, status: type[Status]) -> None:
-    result = run_knip_config(package_json="{unterminated")
+    result = run_knip_config(layout={"package.json": "{unterminated"})
     assert result.findings[0].status == status.ERROR
     assert result.findings[0].message.startswith("could not parse package.json:")
 
 
 def test_27_1_3_errors_when_package_json_is_not_an_object(run_knip_config: RunKnipConfig, error: MakeFinding) -> None:
-    result = run_knip_config(package_json="[]")
+    result = run_knip_config(layout={"package.json": "[]"})
     assert result.findings == [error("package.json must be a JSON object")]
 
 
 def test_27_2_1_fails_when_package_json_has_an_inline_knip_key(
     run_knip_config: RunKnipConfig, fail: MakeFinding
 ) -> None:
-    result = run_knip_config(package_json=_PKG_INLINE_KNIP, prod=_ENTRY_EXPORTS_OK)
+    result = run_knip_config(prod=_ENTRY_EXPORTS_OK, layout={"package.json": _PKG_INLINE_KNIP})
     assert (
         fail('package.json must not have a "knip" key; move its content to a standalone knip.json') in result.findings
     )
@@ -191,11 +227,14 @@ def test_27_4_2_fails_when_include_entry_exports_is_not_true(run_knip_config: Ru
     assert fail('knip.prod.json must set "includeEntryExports": true') in result.findings
 
 
-def test_27_4_3_fails_when_ignore_workspaces_does_not_match_the_test_harness_glob(
+def test_27_4_3_fails_and_names_a_non_production_workspace_ignore_workspaces_leaves_in_the_graph(
     run_knip_config: RunKnipConfig, fail: MakeFinding
 ) -> None:
     result = run_knip_config(prod=_ENTRY_EXPORTS_WRONG_IGNORE)
-    assert fail('knip.prod.json must set "ignoreWorkspaces": ["tests/*"]') in result.findings
+    assert (
+        fail('knip.prod.json "ignoreWorkspaces" leaves non-production workspace(s) in the graph: tests/lib')
+        in result.findings
+    )
 
 
 def test_27_4_4_fails_and_names_an_unexpected_top_level_key(run_knip_config: RunKnipConfig, fail: MakeFinding) -> None:
@@ -313,3 +352,88 @@ def test_27_4_19_fails_when_exclude_covers_anything_beyond_the_catalog_issue_typ
 ) -> None:
     result = run_knip_config(prod=_ENTRY_EXPORTS_EXCLUDE_TOO_MUCH)
     assert fail('knip.prod.json "exclude" (if any) must be exactly ["catalog"]') in result.findings
+
+
+@pytest.mark.parametrize("prod", [_ENTRY_EXPORTS_OK, _ENTRY_EXPORTS_IGNORE_DEEP_GLOB], ids=["shallow", "deep"])
+def test_27_4_20_passes_on_any_glob_spelling_that_drops_exactly_the_non_production_workspaces(
+    run_knip_config: RunKnipConfig, prod: str, ok: MakeFinding
+) -> None:
+    result = run_knip_config(prod=prod)
+    assert result.findings == [ok(_OK)]
+
+
+def test_27_4_21_fails_and_names_a_production_workspace_dropped_from_the_graph(
+    run_knip_config: RunKnipConfig, fail: MakeFinding
+) -> None:
+    result = run_knip_config(prod=_ENTRY_EXPORTS_IGNORE_PRODUCTION)
+    assert fail('knip.prod.json "ignoreWorkspaces" drops production workspace(s): packages/lib') in result.findings
+
+
+def test_27_4_22_fails_when_ignore_workspaces_is_not_a_list_of_globs(
+    run_knip_config: RunKnipConfig, fail: MakeFinding
+) -> None:
+    result = run_knip_config(prod=_ENTRY_EXPORTS_IGNORE_NOT_A_LIST)
+    assert fail('knip.prod.json "ignoreWorkspaces" must be a JSON array of workspace globs') in result.findings
+
+
+def test_27_4_23_errors_when_the_pnpm_workspace_manifest_is_not_valid_yaml(
+    run_knip_config: RunKnipConfig, status: type[Status]
+) -> None:
+    result = run_knip_config(prod=_ENTRY_EXPORTS_OK, layout={"pnpm-workspace.yaml": "packages: [unterminated\n"})
+    assert result.findings[0].status == status.ERROR
+    assert result.findings[0].message.startswith("pnpm-workspace.yaml is not valid YAML:")
+
+
+@pytest.mark.parametrize(
+    ("prod", "problems"),
+    [
+        (
+            _ENTRY_EXPORTS_OK,
+            ['knip.prod.json "ignoreWorkspaces" leaves non-production workspace(s) in the graph: tests/suite/e2e'],
+        ),
+        (_ENTRY_EXPORTS_IGNORE_DEEP_GLOB, []),
+    ],
+    ids=["shallow", "deep"],
+)
+def test_27_4_24_fails_when_a_nested_non_production_workspace_stays_in_the_graph(
+    run_knip_config: RunKnipConfig, prod: str, problems: list[str], fail: MakeFinding, ok: MakeFinding
+) -> None:
+    result = run_knip_config(prod=prod, layout=_NESTED_TESTS_LAYOUT)
+
+    assert result.findings == ([fail(problem) for problem in problems] or [ok(_OK)])
+
+
+def test_27_4_25_fails_when_a_workspace_outside_the_production_roots_stays_in_the_graph(
+    run_knip_config: RunKnipConfig, fail: MakeFinding
+) -> None:
+    result = run_knip_config(prod=_ENTRY_EXPORTS_OK, layout=_TOOLS_LAYOUT)
+
+    assert (
+        fail('knip.prod.json "ignoreWorkspaces" leaves non-production workspace(s) in the graph: tools/lint')
+        in result.findings
+    )
+
+
+def test_27_4_26_takes_the_production_workspaces_from_cerberus_configuration(
+    run_knip_config: RunKnipConfig, ok: MakeFinding
+) -> None:
+    result = run_knip_config(
+        prod=_ENTRY_EXPORTS_OK,
+        layout=_TOOLS_LAYOUT,
+        config_toml=_TOOLS_ARE_PRODUCTION,
+    )
+
+    assert result.findings == [ok(_OK)]
+
+
+@pytest.mark.parametrize(
+    "layout",
+    [_EXCLUDED_TOOL_LAYOUT, _EXCLUDED_TOOL_SUBTREE_LAYOUT],
+    ids=["exact", "subtree"],
+)
+def test_27_4_27_ignores_workspace_members_the_pnpm_manifest_excludes(
+    run_knip_config: RunKnipConfig, layout: dict[str, str | None], ok: MakeFinding
+) -> None:
+    result = run_knip_config(prod=_ENTRY_EXPORTS_OK, layout=layout)
+
+    assert result.findings == [ok(_OK)]

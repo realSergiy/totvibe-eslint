@@ -1,9 +1,8 @@
 {
   "name": "@zyplux/tests-fixtures",
-  "version": "0.4.0",
-  "description": "Story-test fixtures for zyplux workspaces: Bun.$ shell fake, console capture, fetch routing, temp dirs, domain matchers, and vitest test.extend bases per app type",
+  "version": "0.5.0",
+  "description": "Story-test fixtures for zyplux workspaces: Node exec fake, console capture, fetch routing, temp dirs, domain matchers, and vitest test.extend bases per app type",
   "keywords": [
-    "bun",
     "test",
     "fixtures",
     "mock",
@@ -20,27 +19,67 @@
   },
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./package.json": "./package.json"
+    "./cli": "./src/cli.ts",
+    "./console": "./src/console.ts",
+    "./fetch": "./src/fetch.ts",
+    "./fs": "./src/fs.ts",
+    "./matchers": "./src/matchers.ts",
+    "./package.json": "./package.json",
+    "./prompt": "./src/prompt.ts",
+    "./shell": "./src/shell.ts",
+    "./story": "./src/story.ts"
   },
   "files": [
     "README.md",
-    "src"
+    "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./cli": {
+        "types": "./dist/cli.d.ts",
+        "default": "./dist/cli.js"
+      },
+      "./console": {
+        "types": "./dist/console.d.ts",
+        "default": "./dist/console.js"
+      },
+      "./fetch": {
+        "types": "./dist/fetch.d.ts",
+        "default": "./dist/fetch.js"
+      },
+      "./fs": {
+        "types": "./dist/fs.d.ts",
+        "default": "./dist/fs.js"
+      },
+      "./matchers": {
+        "types": "./dist/matchers.d.ts",
+        "default": "./dist/matchers.js"
+      },
+      "./package.json": "./package.json",
+      "./prompt": {
+        "types": "./dist/prompt.d.ts",
+        "default": "./dist/prompt.js"
+      },
+      "./shell": {
+        "types": "./dist/shell.d.ts",
+        "default": "./dist/shell.js"
+      },
+      "./story": {
+        "types": "./dist/story.d.ts",
+        "default": "./dist/story.js"
+      }
+    }
+  },
+  "scripts": {
+    "prepack": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
-    "@zyplux/util": "workspace:*",
     "vitest": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*",
-    "@zyplux/util": "workspace:*",
     "vitest": "catalog:"
   }
 }

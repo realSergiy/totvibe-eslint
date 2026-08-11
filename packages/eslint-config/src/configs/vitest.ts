@@ -1,6 +1,6 @@
 import vitest from '@vitest/eslint-plugin';
 
-import type { ConfigWithExtends } from './types';
+import type { ConfigWithExtends } from './types.ts';
 
 export const vitestConfig = {
   extends: [vitest.configs.recommended],

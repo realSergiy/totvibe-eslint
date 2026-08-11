@@ -52,7 +52,7 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
     if root is None:
         res.skip("no package.json")
         return res
-    if "workspaces" not in _manifest(root):
+    if ctx.file(repo, "pnpm-workspace.yaml") is None:
         res.skip("not a workspace")
         return res
 

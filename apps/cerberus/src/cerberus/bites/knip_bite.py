@@ -1,32 +1,25 @@
-"""knip config governance: a repo's knip settings live in standalone files,
-never inline in `package.json`, so they read the same way `ruff.toml`/
-`.rumdl.toml` do. A bare `knip.json` is optional and, if present, may only
-set the keys in the configured `allowed_customizations`, each drawn from its
-shared allowance: `ignoreBinaries` for system-level tools every org repo may shell
-out to from JS/TS scripts (knip flags them as unlisted binaries because
-they are deliberately not npm dependencies and missing from knip's built-in
-global-binary list), and `ignoreDependencies` for packages knip cannot see
-being consumed. Knip's own defaults remain the baseline; every other
-customization stays forbidden.
+"""knip config governance: settings live in standalone files, never inline in
+`package.json`, the way `ruff.toml` and `.rumdl.toml` do. An optional
+`knip.json` may set only the configured `allowed_customizations`, each drawn
+from its shared allowance — `ignoreBinaries` for system tools JS/TS scripts
+shell out to (deliberately not npm dependencies), `ignoreDependencies` for
+packages knip cannot see consumed. Knip's defaults are the baseline.
 
-A second file, `knip.prod.json`, runs knip's entry-exports pass with the test
-harness excluded: `includeEntryExports` makes knip check a workspace's own
-`exports["."]` surface for dead/test-only exports, which knip otherwise treats
-as an intentional public API — correct for a genuinely published package,
-wrong for everything else. `ignoreWorkspaces` drops every `tests/*` workspace
-member from the graph entirely, so an export reachable only from a test
-workspace reads as unused rather than used — this org tears every package's
-tests out to its own `tests/<basename>` workspace, so excluding those members
-is exactly "only production code counts." The workspaces exempted from
-`includeEntryExports` must match exactly the npm-kind targets declared in
-`release-targets.toml` — those packages have consumers outside the monorepo
-this pass can't see. `--config` replaces knip's config wholesale rather than
-layering on top of `knip.json` (knip has no `extends`), so this file must also
-repeat the repo's `knip.json` content verbatim — otherwise this pass would
-flag things the base pass was told to ignore. It may additionally set
-`"exclude": ["catalog"]`: with tests out of the graph, test-only catalog
-entries would read as unused, and the base pass already checks the catalog
-with tests visible.
+`knip.prod.json` enforces one rule: a production export earns its place only
+by being consumed by other production code, never by tests alone.
+`includeEntryExports` puts a workspace's own `exports["."]` surface under
+scrutiny instead of trusting it as public API, and `ignoreWorkspaces` drops
+every member outside the configured `prod_workspaces` — test harnesses, dev
+tooling — so an export only they reach reads as unused. Any glob spelling
+will do: what is checked is the members it resolves to — every non-production
+workspace dropped, no production one with it. Published packages are the exception
+and opt out of `includeEntryExports` one by one — exactly the npm-kind targets
+in `release-targets.toml`, whose consumers live outside this repo.
+
+Two mechanics: `--config` replaces knip's config wholesale (knip has no
+`extends`), so this file must repeat `knip.json` verbatim; and it may set
+`"exclude": ["catalog"]`, since catalog entries used only outside production
+read as unused here and the base pass already checks the catalog.
 """
 
 from __future__ import annotations
@@ -35,6 +28,9 @@ import json
 import tomllib
 from typing import TYPE_CHECKING, Any
 
+import yaml
+
+from cerberus import workspaces
 from cerberus.model import CheckResult, Scope
 
 if TYPE_CHECKING:
@@ -52,7 +48,7 @@ PACKAGE_JSON = "package.json"
 BASE_CONFIG = "knip.json"
 PROD_CONFIG = "knip.prod.json"
 _RELEASE_TARGETS = "release-targets.toml"
-_PROD_EXTRA_KEYS = frozenset({"$schema", "workspaces", "exclude"})
+_PROD_EXTRA_KEYS = frozenset({"$schema", "workspaces", "exclude", "ignoreWorkspaces"})
 _OK_MESSAGE = (
     "knip.json (if any) stays within the shared allowances; knip.prod.json exactly exempts every published npm target"
 )
@@ -155,6 +151,28 @@ def _check_workspace_exemptions(repo: Repo, ctx: Context, parsed: dict[str, Any]
         res.fail(f"{PROD_CONFIG} workspaces exempts non-published dir(s): {', '.join(extra)}")
 
 
+def _is_production(member_dir: str, prod_globs: tuple[str, ...]) -> bool:
+    """The repo root always ships; every other member ships when a `prod_workspaces` glob names it."""
+    return not member_dir or workspaces.matches_globs(member_dir, prod_globs)
+
+
+def _check_ignore_workspaces(repo: Repo, ctx: Context, parsed: dict[str, Any], res: CheckResult) -> None:
+    """The declared globs must drop every non-production workspace and no production one — any spelling that does."""
+    globs = parsed.get("ignoreWorkspaces")
+    if not isinstance(globs, list) or not all(isinstance(glob, str) for glob in globs):
+        res.fail(f'{PROD_CONFIG} "ignoreWorkspaces" must be a JSON array of workspace globs')
+        return
+    prod_globs = ctx.config.knip_prod_workspaces
+    members = workspaces.ts_member_dirs(repo, ctx, ctx.paths(repo))
+    dropped = {member for member in members if workspaces.matches_globs(member, globs)}
+    kept = sorted(m for m in members if m not in dropped and not _is_production(m, prod_globs))
+    if kept:
+        res.fail(f'{PROD_CONFIG} "ignoreWorkspaces" leaves non-production workspace(s) in the graph: {", ".join(kept)}')
+    dropped_production = sorted(m for m in dropped if _is_production(m, prod_globs))
+    if dropped_production:
+        res.fail(f'{PROD_CONFIG} "ignoreWorkspaces" drops production workspace(s): {", ".join(dropped_production)}')
+
+
 def _check_prod_config(repo: Repo, ctx: Context, base: dict[str, Any], res: CheckResult) -> None:
     content = ctx.file(repo, PROD_CONFIG)
     if content is None:
@@ -169,11 +187,7 @@ def _check_prod_config(repo: Repo, ctx: Context, base: dict[str, Any], res: Chec
         res.error(f"{PROD_CONFIG} must be a JSON object")
         return
 
-    required = {
-        **base,
-        "includeEntryExports": True,
-        "ignoreWorkspaces": ctx.config.knip_required_ignore_workspaces,
-    }
+    required = {**base, "includeEntryExports": True}
     stray_keys = sorted(set(parsed) - set(required) - _PROD_EXTRA_KEYS)
     if stray_keys:
         res.fail(f"{PROD_CONFIG} has unexpected key(s): {', '.join(stray_keys)}")
@@ -185,6 +199,7 @@ def _check_prod_config(repo: Repo, ctx: Context, base: dict[str, Any], res: Chec
     if exclude is not None and exclude != allowed_exclude:
         res.fail(f'{PROD_CONFIG} "exclude" (if any) must be exactly {json.dumps(allowed_exclude)}')
 
+    _check_ignore_workspaces(repo, ctx, parsed, res)
     _check_workspace_exemptions(repo, ctx, parsed, res)
 
 
@@ -205,7 +220,11 @@ def run(repo: Repo, ctx: Context) -> CheckResult:
 
     _check_no_inline_key(manifest, res)
     base = _check_base_config(repo, ctx, res)
-    _check_prod_config(repo, ctx, base, res)
+    try:
+        _check_prod_config(repo, ctx, base, res)
+    except yaml.YAMLError as exc:
+        res.error(f"pnpm-workspace.yaml is not valid YAML: {exc}")
+        return res
 
     if not res.problems:
         res.ok(_OK_MESSAGE)

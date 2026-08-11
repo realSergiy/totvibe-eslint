@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { format, resolveConfig } from 'prettier';
 
-import { printConfig } from '#scripts/print-config';
+import { printConfig } from './print-config.ts';
 
 const rulesPath = new URL('../rules.json', import.meta.url);
 

@@ -126,6 +126,23 @@ def test_7_3_2_forked_child_drops_privilege_for_user_nodes(
     assert run.owners["/home/tester/by-root.txt"] == "root", run.transcript  # needs_root kept root
 
 
+def test_7_3_6_state_dirs_root_creates_in_the_operators_home_are_handed_back(
+    apply_in_container: Callable[[str, list[str]], ContainerRun],
+) -> None:
+    (
+        """Root opens the log file and creates the missing dirs under the operator's home; each """
+        """one is chowned back, so a dropped-privilege cook can still write beside it. In a """
+        """container."""
+    )
+    run = apply_in_container(
+        '[file.user_node]\npath = "/home/tester/by-user.txt"\ncontent = "u\\n"\n',
+        ["/home/tester/.local", "/home/tester/.local/state"],
+    )
+
+    assert run.owners["/home/tester/.local"] == "tester", run.transcript  # handed back, not left to root
+    assert run.owners["/home/tester/.local/state"] == "tester", run.transcript
+
+
 def test_7_3_3_plan_and_lint_never_escalate(
     terminal: FakeTerminal,
     totchef: Totchef,

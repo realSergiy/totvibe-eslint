@@ -1,5 +1,15 @@
 {
-  "extends": "@zyplux/tsconfig/bun.json",
+  "extends": "@zyplux/tsconfig/node.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": true
+  },
   "include": ["."],
-  "references": [{ "path": "../../packages/util-ts" }, { "path": "../fixtures" }]
+  "references": [
+    {
+      "path": "../../packages/util-ts"
+    },
+    {
+      "path": "../fixtures"
+    }
+  ]
 }

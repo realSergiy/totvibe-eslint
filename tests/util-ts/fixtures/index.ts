@@ -1,15 +1,14 @@
-import { libraryTest, makeFixture } from '@zyplux/tests-fixtures';
-import { ZodError } from 'zod';
+import { libraryTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
-import type { Subjects } from './act';
+import type { Subjects } from './act.ts';
 
-import { subjects } from './act';
-import { createNestedGitRepos, workspaceRoot } from './arrange';
+import { subjects } from './act.ts';
+import { createNestedGitRepos, workspaceRoot } from './arrange.ts';
+import './matchers.ts';
 
 type ArrangeFixtures = {
   createNestedGitRepos: typeof createNestedGitRepos;
   workspaceRoot: string;
-  zodError: typeof ZodError;
 };
 
 export const test = libraryTest.extend<ArrangeFixtures & Subjects>({
@@ -28,11 +27,12 @@ export const test = libraryTest.extend<ArrangeFixtures & Subjects>({
   pythonRequirementNames: makeFixture(subjects.pythonRequirementNames),
   readTrimmed: makeFixture(subjects.readTrimmed),
   repositoryUrl: makeFixture(subjects.repositoryUrl),
+  run: makeFixture(subjects.run),
   tryParseToml: makeFixture(subjects.tryParseToml),
   workspaceRoot,
-  zodError: makeFixture(ZodError),
 });
 
-export type { Shell } from './act';
-export type { ShellFake } from '@zyplux/tests-fixtures';
+export type { Shell } from './act.ts';
+export type { TomlOutcome } from './matchers.ts';
+export type { ShellFake } from '@zyplux/tests-fixtures/shell';
 export { describe, expect } from 'vitest';

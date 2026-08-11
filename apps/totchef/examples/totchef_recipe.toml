@@ -121,6 +121,17 @@ packages = [
 [snap]
 packages = ["firefox", "chromium"]
 
+# journald's downstream, so it captures strictly less — and nothing during a hard lockup, where no
+# process is scheduled to drain its socket. Purging also settles journald's ForwardToSyslog: with no
+# syslog.service left to trigger syslog.socket, /run/systemd/journal/syslog never appears and the
+# forward is a no-op, so systemd's own ForwardToSyslog=yes drop-in needs no counter-drop-in.
+[bash.rsyslog_purge]
+needs_root = true
+depends_on = ["apt_pkg"]
+current_state = "dpkg-query -W -f='${Status}' rsyslog 2>/dev/null | grep -q 'install ok installed' && echo present || echo absent"
+desired_state = "absent"
+apply = "apt-get purge -y rsyslog"
+
 [bash.nix]
 needs_root = true
 apply = "curl -sSfL https://artifacts.nixos.org/nix-installer | sh -s -- install --no-confirm"
@@ -157,17 +168,25 @@ update_action = ["self", "update"]
 depends_on = ["url.uv"]
 packages = ["ruff", "pyrefly", "graphifyy"]
 
-[url.bun]
-url = "bun.sh/install"
-update_action = ["upgrade"]
+[url.node]
+url = "fnm.vercel.app/install"
+bin = "fnm"
+args = ["--skip-shell"]
+update_action = "rerun-installer"
+post_hook = 'eval "$(fnm env)" && fnm install 26 --use && fnm default 26'
 
-[bun]
-depends_on = ["url.bun"]
+[url.pnpm]
+url = "get.pnpm.io/install.sh"
+depends_on = ["url.node"]
+update_action = ["self-update"]
+
+[pnpm]
+depends_on = ["url.pnpm"]
 packages = ["@earendil-works/pi-coding-agent", "@zyplux/cz"]
-post_hook = 'mkdir -p "$HOME/.local/bin" && ln -sf "${BUN_INSTALL:-$HOME/.bun}/bin/pi" "$HOME/.local/bin/pi"'
+post_hook = 'mkdir -p "$HOME/.local/bin" && ln -sf "${PNPM_HOME:-$HOME/.local/share/pnpm}/bin/pi" "$HOME/.local/bin/pi"'
 
 [skills]
-depends_on = ["url.bun"]
+depends_on = ["url.pnpm"]
 repos = ["zyplux/zyp-skills"]
 
 [url.claude]
@@ -194,10 +213,6 @@ timer_min = 60
 
 [bash.totchef]
 depends_on = ["url.uv"]
-# Installs from the local zyplux checkout (two levels above this recipe file — see
-# $TOTCHEF_RECIPE below) rather than PyPI: totchef isn't published yet. Once it is, drop this
-# section and add "totchef" to [uv]'s `packages` list instead — the generic uv cook then
-# diffs against PyPI directly.
 current_state = '''
 installed="$(totchef --version 2>/dev/null | awk '{print $2}')"
 wanted="$(grep -m1 '^version' "$(dirname "$(dirname "$TOTCHEF_RECIPE")")/pyproject.toml" | cut -d'"' -f2)"
@@ -205,12 +220,10 @@ wanted="$(grep -m1 '^version' "$(dirname "$(dirname "$TOTCHEF_RECIPE")")/pyproje
 '''
 desired_state = "ok"
 apply = 'uv tool install --force --reinstall "$(dirname "$(dirname "$TOTCHEF_RECIPE")")"'
-# $TOTCHEF_RECIPE is this run's own resolved recipe path (see recipe.py) — repointing the
-# symlink at it (rather than hardcoding a repo location) keeps the pin correct after the repo
-# moves, as long as `totchef up` runs once from the new location to refresh it.
 post_hook = 'cfg="${XDG_CONFIG_HOME:-$HOME/.config}/totchef"; mkdir -p "$cfg" && ln -sfn "$TOTCHEF_RECIPE" "$cfg/recipe.toml" && totchef init "$cfg/recipe.toml"'
 
-[local_bin.ctop]
+[local_bin_dir]
+dirs = ["../../../clipy/src/clipy"]
 
 [file.grub_deep_sleep]
 needs_root = true
@@ -222,6 +235,42 @@ GRUB_CMDLINE_LINUX_DEFAULT="$(echo "$GRUB_CMDLINE_LINUX_DEFAULT" | sed -E 's/ *m
 """
 post_hook = "update-grub"
 
+# The eGPU hard-freeze leaves no trace (docs/issues/egpu-freeze/investigation.md). Two causes, both here:
+# `pcie_ports=native` claims the PCIe services this firmware withholds — it answers `_OSC: platform does
+# not support [AER]`, which leaves the Thunderbolt root port with no aer_dev_* counters at all, so every
+# link error on the tunnel is discarded before anything can log it. It also takes DPC, which contains and
+# logs a fatal downstream error instead of letting it wedge the machine.
+# `crash_kexec_post_notifiers=1` runs the panic notifiers — kmsg_dump into efi_pstore — *before* kexec.
+# The default order tries kexec first, which plausibly hangs on a machine whose PCIe fabric just died,
+# and then no dmesg is written either. This trades a lower chance of the richer vmcore for a much higher
+# chance of the cheap dmesg. Getting one of the two beats optimising for the best case and getting none.
+[file.grub_pcie_diagnostics]
+needs_root = true
+path = "/etc/default/grub.d/99-pcie-diagnostics.cfg"
+mode = "0644"
+content = """
+# Make Thunderbolt/PCIe faults observable; dump dmesg to pstore before attempting kexec.
+GRUB_CMDLINE_LINUX_DEFAULT="$(echo "$GRUB_CMDLINE_LINUX_DEFAULT" | sed -E 's/ *(pcie_ports=[^ "]*|crash_kexec_post_notifiers=[^ "]*)//g') pcie_ports=native crash_kexec_post_notifiers=1"
+"""
+post_hook = "update-grub"
+
+# The NMI hard-lockup detector already runs (`NMI watchdog: Enabled` every boot) and almost certainly
+# fired during the Aug 2026 freeze — but hardlockup_panic=0 means it only printk()s into a ring buffer
+# that never reached disk. Nothing was wired to anything persistent, which is why linux-crashdump's
+# armed kdump (crashkernel reserved, kexec_crash_loaded=1) captured nothing. Panicking on detection is
+# what turns it into a /var/crash vmcore and an efi_pstore dmesg that survives the hard reset.
+# softlockup_panic stays 0 on purpose: it fires on benign long stalls and would cost real uptime.
+[file.hardlockup_capture]
+needs_root = true
+path = "/etc/sysctl.d/60-hardlockup-capture.conf"
+mode = "0644"
+content = """
+kernel.hardlockup_panic = 1
+kernel.hardlockup_all_cpu_backtrace = 1
+kernel.panic = 20
+"""
+post_hook = "sysctl --system"
+
 [usr_local_sbin.egpu-prime-switch]
 depends_on = ["apt_pkg"]
 
@@ -231,6 +280,19 @@ path = "/etc/systemd/system/egpu-prime.service"
 mode = "0644"
 depends_on = ["apt_pkg"]
 post_hook = "systemctl daemon-reload; systemctl enable egpu-prime.service"
+
+# NVIDIA's replay counters are the one Thunderbolt link-health signal that survives this platform
+# withholding AER, and they need no reboot to start working. Rising replays before a freeze implicate
+# the tunnel; flat replays right up to one exonerate it. Either verdict ends a years-old guess.
+[usr_local_sbin.egpu-link-probe]
+depends_on = ["apt_pkg"]
+
+[file.egpu-link-telemetry]
+needs_root = true
+path = "/etc/systemd/system/egpu-link-telemetry.service"
+mode = "0644"
+depends_on = ["usr_local_sbin.egpu-link-probe"]
+post_hook = "systemctl daemon-reload; systemctl enable --now egpu-link-telemetry.service"
 
 [file.nvidia_power]
 needs_root = true

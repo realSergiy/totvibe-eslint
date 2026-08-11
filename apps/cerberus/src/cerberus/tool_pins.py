@@ -1,4 +1,4 @@
-"""Exact versions of the npm tools cerberus runs via `bunx`.
+"""Exact versions of the npm tools cerberus runs via `pnpx`.
 
 The pins live in source rather than `cerberus.toml` so no repo overlay can
 drift a tool version away from the org: every cerberus release carries them
@@ -11,8 +11,8 @@ fix is bumping the pin here and releasing cerberus.
 from __future__ import annotations
 
 NPM_TOOL_PINS: dict[str, str] = {
-    "jscpd": "5.0.12",
-    "fallow": "3.3.0",
+    "jscpd": "5.0.14",
+    "fallow": "3.14.0",
 }
 
 

@@ -15,16 +15,18 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          bun-version: 1.3.14
-      - run: bun install --frozen-lockfile
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Authenticate to npm
         run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Bootstrap publish
-        run: bun run cz bootstrap-npm-target "$LABEL"
+        run: pnpm run cz bootstrap-npm-target "$LABEL"
         env:
           LABEL: ${{ inputs.label }}

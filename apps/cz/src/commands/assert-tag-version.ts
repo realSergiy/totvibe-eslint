@@ -1,8 +1,9 @@
 import type { InferValue } from '#optique';
 
-import { makeReleaseTagCommand } from '#commands/release-tag-command';
 import { message } from '#optique';
 import { resolveReleaseTag } from '#release-targets';
+
+import { makeReleaseTagCommand } from './release-tag-command.ts';
 
 export const assertTagVersionCommand = makeReleaseTagCommand('assert-tag-version', {
   alias: 'av',

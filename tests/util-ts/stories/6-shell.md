@@ -18,7 +18,7 @@
 
 ## 6.5 invoking the shell function directly
 
-### 6.5.1 forwards a direct call to the underlying Bun.$ tagged template
+### 6.5.1 forwards a direct call to the underlying shell harness
 
 ## 6.6 omitting optional flags falls back to defaults
 

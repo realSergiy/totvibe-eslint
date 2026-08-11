@@ -5,6 +5,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["bun", "react", "react-dom"]
+    "types": ["node", "react", "react-dom"]
   }
 }

@@ -4,7 +4,7 @@
 
 ### 10.1.1 skips repos with no package json
 
-### 10.1.2 skips repos whose package json is not a workspace
+### 10.1.2 skips repos without a pnpm workspace manifest
 
 ### 10.1.3 skips workspaces with no tsconfig file
 
