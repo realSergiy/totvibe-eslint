@@ -98,7 +98,6 @@ packages = [
     "nala",
     "vainfo",
     "linux-crashdump",
-    "nvidia-driver-580-open",
     "nvidia-vaapi-driver",
     "zed",
     "brave-browser",
