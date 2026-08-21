@@ -52,7 +52,7 @@ def pytest_terminal_summary(config: pytest.Config) -> None:
     exit_code = pytest.main([
         *deferred_paths,
         "-o",
-        "addopts=--cov=cerberus --cov=clipy --cov=totchef --cov=token_stats --cov-report=term-missing",
+        "addopts=--cov=clipy --cov-report=term-missing",
         "-p",
         "no:xdist",
         "-q",
