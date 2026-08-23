@@ -86,3 +86,7 @@ finds it. Verified end-to-end in a container.
 ### 4.3.4 pnpm keeps a global within its declared major
 
 A versioned package specifier such as `node@26` reports under the package's name and refreshes through the declared range on every run, so the latest Node 26 release is installed without drifting into a later major.
+
+### 4.3.5 pnpm rejects conflicting specs for one package
+
+Two specifiers that identify the same package are ambiguous, so `[pnpm]` rejects declarations such as `node@26` alongside `node@27` instead of silently choosing one.

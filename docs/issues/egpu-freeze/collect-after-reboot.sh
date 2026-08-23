@@ -7,6 +7,10 @@ if (( EUID != 0 )); then
 fi
 
 capture_root=/var/log/egpu-freeze
+if [[ ! -d "$capture_root" ]]; then
+  echo "No capture run found under $capture_root." >&2
+  exit 1
+fi
 run_dir=$(find "$capture_root" -mindepth 1 -maxdepth 1 -type d -name 'run-*' -printf '%p\n' | sort | tail -n 1)
 if [[ -z "$run_dir" ]]; then
   echo "No capture run found under $capture_root." >&2

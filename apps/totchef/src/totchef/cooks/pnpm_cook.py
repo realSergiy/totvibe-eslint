@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from loguru import logger
+from pydantic import model_validator
 
 from totchef import shell
-from totchef.cook_base import PackageListCook, SyncOutcome
+from totchef.cook_base import PackageListCook, PackagesConfig, SyncOutcome
 from totchef.harness import fetch_latest_concurrent, fetch_url, find_binary
 
 if TYPE_CHECKING:
@@ -84,10 +85,26 @@ def read_global_versions(pnpm: Path) -> dict[str, str]:
     return parse_global_list(completed.stdout)
 
 
+class PnpmConfig(PackagesConfig):
+    @model_validator(mode="after")
+    def validate_unique_packages(self) -> PnpmConfig:
+        specs: dict[str, str] = {}
+        for spec in self.packages:
+            name = package_name(spec)
+            if previous := specs.get(name):
+                msg = f"Multiple pnpm specs identify {name}: {previous}, {spec}"
+                raise ValueError(msg)
+            specs[name] = spec
+        return self
+
+
 class PnpmCook(PackageListCook):
+    entry_model = PnpmConfig
+
     def __init__(self, section: RecipeConfig) -> None:
         super().__init__(section)
-        self.specs = {package_name(spec): spec for spec in self.packages}
+        config = PnpmConfig.model_validate(section)
+        self.specs = {package_name(spec): spec for spec in config.packages}
 
     @override
     def list_requested(self) -> list[str]:

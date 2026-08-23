@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -207,59 +208,60 @@ def main() -> int:
     run_name = datetime.now(tz=UTC).strftime("run-%Y%m%dT%H%M%SZ")
     run_dir = options.output / run_name
     run_dir.mkdir(parents=True)
-    logs = {name: DurableLog(run_dir / f"{name}.log") for name in ("link", "nvidia", "kernel", "udev")}
-    stop = threading.Event()
-    previous_sysctls = {name: get_sysctl(name) for name in SYSCTLS}
-    for name, value in SYSCTLS.items():
-        set_sysctl(name, value)
-    set_dynamic_debug(enabled=True)
-    (run_dir / "cmdline.txt").write_text(Path("/proc/cmdline").read_text(encoding="utf-8"), encoding="utf-8")
-    threads = [
-        threading.Thread(target=sample_nvidia, args=(logs["nvidia"], stop), daemon=True),
-        threading.Thread(
-            target=stream,
-            args=(["journalctl", "-kf", "-o", "short-precise"], logs["kernel"], stop),
-            daemon=True,
-        ),
-        threading.Thread(
-            target=stream,
-            args=(
-                [
-                    "udevadm",
-                    "monitor",
-                    "--kernel",
-                    "--udev",
-                    "--property",
-                    "--subsystem-match=pci",
-                    "--subsystem-match=thunderbolt",
-                    "--subsystem-match=usb",
-                    "--subsystem-match=drm",
-                    "--subsystem-match=net",
-                ],
-                logs["udev"],
-                stop,
-            ),
-            daemon=True,
-        ),
-    ]
-    signal.signal(signal.SIGTERM, lambda *_args: stop.set())
-    for thread in threads:
-        thread.start()
-    sys.stdout.write(f"Capture armed in {run_dir}\n")
-    sys.stdout.flush()
-    try:
-        while not stop.is_set():
-            started = time.monotonic()
-            logs["link"].write(collect_links())
-            stop.wait(max(0.0, 1 - (time.monotonic() - started)))
-    except KeyboardInterrupt:
-        stop.set()
-    finally:
-        set_dynamic_debug(enabled=False)
-        for name, value in previous_sysctls.items():
+    with ExitStack() as cleanup:
+        logs: dict[str, DurableLog] = {}
+        for name in ("link", "nvidia", "kernel", "udev"):
+            logs[name] = DurableLog(run_dir / f"{name}.log")
+            cleanup.callback(logs[name].close)
+        stop = threading.Event()
+        cleanup.callback(stop.set)
+        previous_sysctls = {name: get_sysctl(name) for name in SYSCTLS}
+        for name, value in SYSCTLS.items():
+            cleanup.callback(set_sysctl, name, previous_sysctls[name])
             set_sysctl(name, value)
-        for log in logs.values():
-            log.close()
+        cleanup.callback(set_dynamic_debug, enabled=False)
+        set_dynamic_debug(enabled=True)
+        (run_dir / "cmdline.txt").write_text(Path("/proc/cmdline").read_text(encoding="utf-8"), encoding="utf-8")
+        threads = [
+            threading.Thread(target=sample_nvidia, args=(logs["nvidia"], stop), daemon=True),
+            threading.Thread(
+                target=stream,
+                args=(["journalctl", "-kf", "-o", "short-precise"], logs["kernel"], stop),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=stream,
+                args=(
+                    [
+                        "udevadm",
+                        "monitor",
+                        "--kernel",
+                        "--udev",
+                        "--property",
+                        "--subsystem-match=pci",
+                        "--subsystem-match=thunderbolt",
+                        "--subsystem-match=usb",
+                        "--subsystem-match=drm",
+                        "--subsystem-match=net",
+                    ],
+                    logs["udev"],
+                    stop,
+                ),
+                daemon=True,
+            ),
+        ]
+        signal.signal(signal.SIGTERM, lambda *_args: stop.set())
+        for thread in threads:
+            thread.start()
+        sys.stdout.write(f"Capture armed in {run_dir}\n")
+        sys.stdout.flush()
+        try:
+            while not stop.is_set():
+                started = time.monotonic()
+                logs["link"].write(collect_links())
+                stop.wait(max(0.0, 1 - (time.monotonic() - started)))
+        except KeyboardInterrupt:
+            stop.set()
     return 0
 
 

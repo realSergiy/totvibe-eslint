@@ -277,3 +277,13 @@ def test_4_3_4_pnpm_keeps_a_global_within_its_declared_major(
 
     report.assert_shows("pnpm.node", "upgraded")
     terminal.expect_ran("pnpm add -g --ignore-scripts node@26")
+
+
+def test_4_3_5_pnpm_rejects_conflicting_specs_for_one_package(recipe: RecipeBuilder, totchef: Totchef) -> None:
+    """Two specs for one package are ambiguous and fail instead of silently selecting the last one."""
+    recipe.declares("pnpm", packages=["node@26", "node@27"])
+
+    report = totchef.up()
+
+    report.assert_rejected("node@26")
+    report.assert_rejected("node@27")

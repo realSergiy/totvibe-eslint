@@ -321,8 +321,16 @@ def link_cli_binaries(name: str) -> None:
         link = bin_dir / bin_name
         if link.is_symlink() and link.resolve() == script.resolve():
             continue
+        if not link.is_symlink() and link.exists():
+            logger.warning(
+                "{name}: could not link {bin_name} CLI binary: {link} exists and is not a symlink",
+                name=name,
+                bin_name=bin_name,
+                link=link,
+            )
+            continue
         try:
-            if link.exists() or link.is_symlink():
+            if link.is_symlink():
                 link.unlink()
             link.symlink_to(script)
             logger.info("Linked {bin_name} CLI binary", bin_name=bin_name)

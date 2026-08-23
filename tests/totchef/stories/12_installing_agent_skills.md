@@ -116,3 +116,7 @@ re-adds its repo, letting the CLI replace the entry with the symlink.
 A skill first appearing during a re-add of an already-installed repo (upstream
 added it) gets its own per-skill row, reporting "installed" — not just the sync
 log mention of 12.1.6.
+
+### 12.1.17 a cli-kind skill preserves an existing non-symlink binary
+
+A skill CLI link may replace an earlier symlink, but it warns and leaves an existing regular file or directory untouched because that path belongs to another installer or the operator.

@@ -323,3 +323,23 @@ def test_12_1_16_a_re_add_reports_a_newly_landed_skill_as_its_own_installed_row(
 
     report.assert_shows("skills.zyplux/zyp-skills/totchef", "upgraded")
     report.assert_shows("skills.zyplux/zyp-skills/mermaid", "installed")
+
+
+def test_12_1_17_a_cli_kind_skill_preserves_an_existing_non_symlink_binary(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """A skill CLI link never replaces an unrelated regular file that already owns the command name."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={"peek": {"package.json": '{"bin": "peek.py"}', "peek.py": "#!/usr/bin/env python3\n"}},
+    )
+    global_bin = home / ".local" / "share" / "pnpm" / "bin" / "peek"
+    global_bin.parent.mkdir(parents=True)
+    global_bin.write_text("user-owned\n")
+
+    report = totchef.up()
+
+    report.assert_succeeded()
+    report.assert_logged("not a symlink")
+    assert not global_bin.is_symlink()
+    assert global_bin.read_text() == "user-owned\n"
