@@ -120,3 +120,11 @@ log mention of 12.1.6.
 ### 12.1.17 a cli-kind skill preserves an existing non-symlink binary
 
 A skill CLI link may replace an earlier symlink, but it warns and leaves an existing regular file or directory untouched because that path belongs to another installer or the operator.
+
+### 12.1.18 a scoped cli-kind skill uses its unscoped binary name
+
+For a string-form `bin`, a scoped package such as `@zyplux/peek` links the command as `peek`, matching npm's unscoped executable-name convention.
+
+### 12.1.19 cli-kind skill bins cannot escape their directories
+
+Only string command-to-path entries are considered, command names cannot contain path separators, and resolved scripts must remain inside the skill directory.

@@ -343,3 +343,50 @@ def test_12_1_17_a_cli_kind_skill_preserves_an_existing_non_symlink_binary(
     report.assert_logged("not a symlink")
     assert not global_bin.is_symlink()
     assert global_bin.read_text() == "user-owned\n"
+
+
+def test_12_1_18_a_scoped_cli_kind_skill_uses_its_unscoped_binary_name(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """A string bin for @scope/package links as package, matching npm's command-name convention."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={
+            "peek": {
+                "package.json": '{"name": "@zyplux/peek", "bin": "peek.py"}',
+                "peek.py": "#!/usr/bin/env python3\n",
+            }
+        },
+    )
+
+    totchef.up().assert_succeeded()
+
+    global_bin = home / ".local" / "share" / "pnpm" / "bin" / "peek"
+    assert global_bin.resolve() == home / ".agents" / "skills" / "peek" / "peek.py"
+
+
+def test_12_1_19_cli_kind_skill_bins_cannot_escape_their_directories(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """Malformed bin names, non-string paths, and paths outside the skill are ignored."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={
+            "peek": {
+                "package.json": (
+                    '{"bin": {"peek": "peek.py", "../outside": "peek.py", "wrong": "../outside.py", "bad": 42}}'
+                ),
+                "peek.py": "#!/usr/bin/env python3\n",
+            }
+        },
+    )
+    skills_dir = home / ".agents" / "skills"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "outside.py").write_text("user-owned\n")
+
+    totchef.up().assert_succeeded()
+
+    global_bin = home / ".local" / "share" / "pnpm" / "bin"
+    assert (global_bin / "peek").is_symlink()
+    assert not (global_bin / "wrong").exists()
+    assert not (global_bin.parent / "outside").exists()

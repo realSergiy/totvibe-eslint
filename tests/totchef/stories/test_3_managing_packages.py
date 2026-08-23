@@ -109,6 +109,13 @@ def test_3_1_4_reboot_required_notice_survives_to_the_end_of_the_run(
     assert block.count("nvidia-driver-580-open") == 1  # the causing packages, deduped
 
 
+def test_3_1_5_package_lists_reject_duplicate_entries(recipe: RecipeBuilder, totchef: Totchef) -> None:
+    """Every package-list cook rejects exact duplicates during recipe validation."""
+    recipe.declares("apt_pkg", packages=["git", "git"])
+
+    totchef.up().assert_rejected("Duplicate package: git")
+
+
 # 3.2 Install and refresh snaps
 
 

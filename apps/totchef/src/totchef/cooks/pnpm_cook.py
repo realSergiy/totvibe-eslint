@@ -87,7 +87,7 @@ def read_global_versions(pnpm: Path) -> dict[str, str]:
 
 class PnpmConfig(PackagesConfig):
     @model_validator(mode="after")
-    def validate_unique_packages(self) -> PnpmConfig:
+    def validate_unique_package_names(self) -> PnpmConfig:
         specs: dict[str, str] = {}
         for spec in self.packages:
             name = package_name(spec)

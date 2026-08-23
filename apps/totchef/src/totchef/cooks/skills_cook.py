@@ -290,9 +290,15 @@ def bin_entries(package_json: Path) -> dict[str, str]:
         return {}
     bin_field = manifest.get("bin")
     if isinstance(bin_field, dict):
-        return bin_field
+        return {
+            name: path
+            for name, path in bin_field.items()
+            if isinstance(name, str) and name and "/" not in name and isinstance(path, str)
+        }
     if isinstance(bin_field, str):
-        return {str(manifest.get("name") or package_json.parent.name): bin_field}
+        package_name = manifest.get("name")
+        bin_name = package_name.rsplit("/", 1)[-1] if isinstance(package_name, str) else package_json.parent.name
+        return {bin_name: bin_field} if bin_name else {}
     return {}
 
 
@@ -313,9 +319,10 @@ def link_cli_binaries(name: str) -> None:
         return
     bin_dir = global_bin_dir()
     bin_dir.mkdir(parents=True, exist_ok=True)
+    skill_root = skill_dir.resolve()
     for bin_name, bin_path in entries.items():
-        script = skill_dir / bin_path
-        if not script.exists():
+        script = (skill_dir / bin_path).resolve()
+        if not script.is_relative_to(skill_root) or not script.is_file():
             continue
         script.chmod(script.stat().st_mode | 0o111)
         link = bin_dir / bin_name

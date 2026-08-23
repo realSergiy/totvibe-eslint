@@ -35,6 +35,10 @@ After the transaction, `[apt_pkg]` reads `/var/run/reboot-required` (and its
 `.pkgs` companion naming the packages that caused it); when present, the
 notice is carried as a delayed message into the `Action required` block.
 
+### 3.1.5 package lists reject duplicate entries
+
+Every package-list section rejects exact duplicate entries during recipe validation instead of scheduling the same package twice.
+
 ## 3.2 Install and refresh snaps
 
 > As an operator, I want to declare snap packages and have them installed and
