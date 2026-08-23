@@ -26,7 +26,7 @@ const npmTarballName = (label: string, version: string) =>
 
 export const publishNpm = async (dir: string, label: string, version: string) => {
   await $`pnpm pack`.cwd(dir);
-  await $`pnpm publish ${npmTarballName(label, version)} --access public`.cwd(dir);
+  await $`npm publish ${npmTarballName(label, version)} --access public`.cwd(dir);
 };
 
 const publishPypi = async (label: string) => {

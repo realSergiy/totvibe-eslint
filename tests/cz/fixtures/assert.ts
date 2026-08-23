@@ -7,6 +7,6 @@ export const expectNpmPackAndPublish = ({ calls }: ShellFake, dir: string, tarba
   expect(calls).toContainEqual({
     argv: ['publish', tarball, '--access', 'public'],
     cwd: dir,
-    program: 'pnpm',
+    program: 'npm',
   });
 };

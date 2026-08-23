@@ -31,7 +31,7 @@ describe('8.2 publishing to each registry kind', () => {
   }) => {
     registries.setPublished({ npmPublished: false });
     shell.on(/pnpm pack/, '');
-    shell.on(/pnpm publish/, '');
+    shell.on(/^npm publish/, '');
 
     await cz.run('publish-tagged-target', 'util-v1.2.3');
 
