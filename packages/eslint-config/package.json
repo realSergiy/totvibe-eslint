@@ -1,6 +1,6 @@
 {
   "name": "@zyplux/eslint-config",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Shared ESLint flat config and custom rules",
   "keywords": [
     "eslint",
@@ -26,7 +26,6 @@
   "imports": {
     "#contracts": "./src/contracts.ts",
     "#create-rule": "./src/create-rule.ts",
-    "#package.json": "./package.json",
     "#plugin": "./src/plugin.ts"
   },
   "files": [
@@ -38,7 +37,6 @@
     "imports": {
       "#contracts": "./dist/src/contracts.js",
       "#create-rule": "./dist/src/create-rule.js",
-      "#package.json": "./package.json",
       "#plugin": "./dist/src/plugin.js"
     },
     "exports": {
@@ -55,21 +53,22 @@
   },
   "scripts": {
     "dump-rules": "node scripts/dump-rules.ts",
-    "prepack": "tsc -b tsconfig.json"
+    "prepack": "node --eval \"require('node:fs').rmSync('dist', { force: true, recursive: true })\" && tsc -b --force tsconfig.json"
   },
   "dependencies": {
+    "@eslint-react/eslint-plugin": "catalog:",
     "@eslint/js": "catalog:",
     "@typescript-eslint/type-utils": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "@vitest/eslint-plugin": "catalog:",
+    "@zyplux/util": "workspace:*",
     "eslint-config-prettier": "catalog:",
     "eslint-plugin-perfectionist": "catalog:",
     "eslint-plugin-prefer-arrow-functions": "catalog:",
-    "eslint-plugin-react": "catalog:",
-    "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
     "typescript-eslint": "catalog:",
-    "yaml": "catalog:"
+    "yaml": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "eslint": "catalog:",
@@ -78,8 +77,6 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "@zyplux/tsconfig": "workspace:*",
-    "@zyplux/util": "workspace:*",
-    "typescript": "catalog:",
-    "zod": "catalog:"
+    "typescript": "catalog:"
   }
 }

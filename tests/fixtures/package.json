@@ -1,6 +1,6 @@
 {
   "name": "@zyplux/tests-fixtures",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Story-test fixtures for zyplux workspaces: Node exec fake, console capture, fetch routing, temp dirs, domain matchers, and vitest test.extend bases per app type",
   "keywords": [
     "test",
@@ -72,7 +72,7 @@
     }
   },
   "scripts": {
-    "prepack": "tsc -b tsconfig.json"
+    "prepack": "node --eval \"require('node:fs').rmSync('dist', { force: true, recursive: true })\" && tsc -b --force tsconfig.json"
   },
   "peerDependencies": {
     "vitest": "catalog:"

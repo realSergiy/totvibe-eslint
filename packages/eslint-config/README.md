@@ -27,7 +27,7 @@ One call is the whole config: ESLint recommended, type-checked typescript-eslint
 ```ts
 export default zyplux({
   react: {
-    dom: ['apps/web/**/*.{ts,tsx}'], // full eslint-plugin-react (DOM)
+    dom: ['apps/web/**/*.{ts,tsx}'], // React + DOM rules
     opentui: ['apps/tui/**/*.{ts,tsx}'], // non-DOM renderer
   },
   reactVersion: '19.0',
@@ -35,8 +35,8 @@ export default zyplux({
 });
 ```
 
-- `dom` — DOM rules on (eslint-plugin-react `recommended` + `jsx-runtime` + React Hooks).
-- `opentui` / `ink` / `r3f` / `react-pdf` — same, but `react/no-unknown-property` off, since `tsc` already validates each renderer's host props through `JSX.IntrinsicElements`.
+- `dom` — `@eslint-react/eslint-plugin` `strict-typescript`, including strict React, JSX, Hooks, DOM, Web API, and naming rules.
+- `opentui` / `ink` / `r3f` / `react-pdf` — the same React rules with the DOM preset disabled, since `tsc` validates each renderer's host props through `JSX.IntrinsicElements`.
 - Shorthand: `react: true` ≡ `{ dom: ['**/src/**/*.{ts,tsx}'] }`.
 
 ## Monorepos

@@ -1,6 +1,6 @@
 {
   "name": "@zyplux/tsconfig",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared TypeScript configs for the zyplux org",
   "keywords": [
     "tsconfig",
@@ -19,10 +19,11 @@
     "README.md",
     "base.json",
     "bun.json",
+    "cfworker.json",
     "node.json",
+    "node-pub.json",
     "web.json",
-    "tui.json",
-    "iso.json"
+    "tui.json"
   ],
   "publishConfig": {
     "access": "public"

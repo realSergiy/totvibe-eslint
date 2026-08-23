@@ -38,8 +38,8 @@ ignore_names = ["pytestmark", "*Cook", "model_config", "_fake_tokenizer_backend"
 
 [dependency-groups]
 lint = [
-    "ruff>=0.16.2",
-    "rumdl>=0.2.52",
+    "ruff>=0.16.4",
+    "rumdl>=0.2.60",
     "vulture>=2.16",
 ]
 test = [
@@ -51,7 +51,7 @@ test = [
 type = [
     "pyrefly>=1.2.0",
     "types-networkx>=3.6.1.20260728",
-    "types-pyyaml>=6.0.12.20260724",
+    "types-pyyaml>=6.0.12.20260815",
     # psutil ships no type stubs of its own; apps/clipy's ctop.py needs this to resolve them.
     "types-psutil>=7.2.2.20260518",
 ]

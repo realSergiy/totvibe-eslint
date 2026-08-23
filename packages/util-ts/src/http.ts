@@ -16,7 +16,7 @@ export class FetchError extends Error {
   }
 }
 
-export const httpOk = async (input: string | URL, init?: RequestInit) => {
+export const isHttpOk = async (input: string | URL, init?: RequestInit) => {
   const response = await fetch(input, init);
   return response.ok;
 };

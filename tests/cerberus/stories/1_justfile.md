@@ -270,3 +270,9 @@ A runner segment that happens to be followed by the words `cz clean` later on
 without actually invoking them (`pnpm run echo cz clean`, which runs `echo`)
 is not a `cz clean` invocation: only the exact shapes the org's repos use —
 `cz clean`, `pnpm run cz clean`, `pnpx cz clean` — satisfy the check.
+
+## 1.12 forwarding upgrade arguments through pnpm 12
+
+### 1.12.1 keeps pnpm separator out of script arguments
+
+pnpm 12 forwards the `--` after a script name to that script. The canonical upgrade recipes therefore pass optional and interactive arguments directly, so npm-check-updates receives `-i` instead of a literal separator and package filter. The non-interactive recipe installs the ranges it updates before continuing to Python dependencies.

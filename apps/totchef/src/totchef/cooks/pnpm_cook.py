@@ -7,13 +7,16 @@
 import json
 import os
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from loguru import logger
 
 from totchef import shell
 from totchef.cook_base import PackageListCook, SyncOutcome
 from totchef.harness import fetch_latest_concurrent, fetch_url, find_binary
+
+if TYPE_CHECKING:
+    from totchef.recipe_types import RecipeConfig
 
 NPM_REGISTRY = "https://registry.npmjs.org/{name}"
 
@@ -25,6 +28,13 @@ def parse_npm_latest(payload: bytes) -> str | None:
 
 def fetch_npm_latest(name: str) -> str | None:
     return parse_npm_latest(fetch_url(NPM_REGISTRY.format(name=name)))
+
+
+def package_name(spec: str) -> str:
+    """The package identity from a bare name or versioned npm specifier such as `node@26`."""
+    scope_end = spec.find("/") if spec.startswith("@") else 0
+    version_at = spec.find("@", scope_end + 1)
+    return spec[:version_at] if version_at >= 0 else spec
 
 
 def pnpm_home() -> Path:
@@ -75,6 +85,14 @@ def read_global_versions(pnpm: Path) -> dict[str, str]:
 
 
 class PnpmCook(PackageListCook):
+    def __init__(self, section: RecipeConfig) -> None:
+        super().__init__(section)
+        self.specs = {package_name(spec): spec for spec in self.packages}
+
+    @override
+    def list_requested(self) -> list[str]:
+        return list(self.specs)
+
     @override
     def list_installed(self) -> dict[str, str]:
         pnpm = find_binary("pnpm")
@@ -85,11 +103,14 @@ class PnpmCook(PackageListCook):
 
     @override
     def find_latest(self, names: list[str]) -> dict[str, str | None]:
-        return fetch_latest_concurrent(names, fetch_npm_latest)
+        unversioned = [name for name in names if self.specs[name] == name]
+        latest = dict.fromkeys(names)
+        latest.update(fetch_latest_concurrent(unversioned, fetch_npm_latest))
+        return latest
 
     @override
     def sync(self, to_install: list[str], to_upgrade: list[str]) -> SyncOutcome:
-        targets = to_install + to_upgrade
+        targets = [self.specs[name] for name in to_install + to_upgrade]
         pnpm = find_binary("pnpm")
         if not pnpm:
             if targets:

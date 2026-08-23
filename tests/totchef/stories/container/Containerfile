@@ -14,7 +14,7 @@ RUN apt-get update \
 # pnpm on the system PATH; the [pnpm] cook resolves it via find_binary and must drive its
 # globals into the user's ~/.local/share/pnpm, not an inherited data dir (§4.3.3). The
 # standalone build is a self-contained ELF (no Node needed) and links against libatomic.
-ARG PNPM_VERSION=11.13.1
+ARG PNPM_VERSION=12.0.0-rc.8
 RUN mkdir -p /opt/pnpm \
  && curl -fsSL "https://github.com/pnpm/pnpm/releases/download/v${PNPM_VERSION}/pnpm-linux-x64.tar.gz" \
     | tar -xz -C /opt/pnpm \

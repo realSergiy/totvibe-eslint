@@ -4,7 +4,7 @@ import type { ZypluxConfig as Config } from '#fixtures';
 import { describe, expect, test } from '#fixtures';
 
 const hasReactSettings = (config: Config) =>
-  config.some(entry => entry.settings !== undefined && 'react' in entry.settings);
+  config.some(entry => entry.settings !== undefined && 'react-x' in entry.settings);
 
 const hasRouteRule = (config: Config) =>
   config.some(entry => Array.isArray(entry.files) && entry.files.includes('**/routes/**/*.{ts,tsx}'));
@@ -12,9 +12,11 @@ const hasRouteRule = (config: Config) =>
 const reactVersion = (config: Config) => {
   for (const entry of config) {
     const { settings } = entry;
-    if (settings === undefined || !('react' in settings)) continue;
-    const { react } = settings;
-    if (react !== null && typeof react === 'object' && 'version' in react) return react.version;
+    if (settings === undefined || !('react-x' in settings)) continue;
+    const reactSettings = settings['react-x'];
+    if (reactSettings !== null && typeof reactSettings === 'object' && 'version' in reactSettings) {
+      return reactSettings.version;
+    }
   }
   return;
 };
@@ -22,7 +24,7 @@ const reactVersion = (config: Config) => {
 const isRuleDisabled = (config: Config, ruleName: string) => config.some(entry => entry.rules?.[ruleName] === 'off');
 
 const reactSettingsFiles = (config: Config) =>
-  config.flatMap(entry => (entry.settings !== undefined && 'react' in entry.settings ? (entry.files ?? []) : []));
+  config.flatMap(entry => (entry.settings !== undefined && 'react-x' in entry.settings ? (entry.files ?? []) : []));
 
 const offRuleFiles = (config: Config, ruleName: string) =>
   config.flatMap(entry => (entry.rules?.[ruleName] === 'off' ? (entry.files ?? []) : []));
@@ -66,10 +68,15 @@ describe('3. Configuring eslint through the public zyplux entry point', () => {
     });
 
     test('3.2.4 turns off the no-unknown-property rule for non-dom files only once react is enabled', ({ zyplux }) => {
-      expect(isRuleDisabled(zyplux(), 'react/no-unknown-property')).toBe(false);
-      expect(isRuleDisabled(zyplux({ nonDomReactFiles: ['apps/tui/**'] }), 'react/no-unknown-property')).toBe(false);
+      expect(isRuleDisabled(zyplux(), '@eslint-react/dom-no-unknown-property')).toBe(false);
       expect(
-        isRuleDisabled(zyplux({ nonDomReactFiles: ['apps/tui/**'], react: true }), 'react/no-unknown-property'),
+        isRuleDisabled(zyplux({ nonDomReactFiles: ['apps/tui/**'] }), '@eslint-react/dom-no-unknown-property'),
+      ).toBe(false);
+      expect(
+        isRuleDisabled(
+          zyplux({ nonDomReactFiles: ['apps/tui/**'], react: true }),
+          '@eslint-react/dom-no-unknown-property',
+        ),
       ).toBe(true);
     });
   });
@@ -89,13 +96,15 @@ describe('3. Configuring eslint through the public zyplux entry point', () => {
     test('3.4.2 keeps the no-unknown-property rule for the dom renderer while turning it off for non-dom renderers', ({
       zyplux,
     }) => {
-      expect(offRuleFiles(zyplux({ react: rendererMap }), 'react/no-unknown-property')).toEqual(['apps/tui/**/*.tsx']);
+      expect(offRuleFiles(zyplux({ react: rendererMap }), '@eslint-react/dom-no-unknown-property')).toEqual([
+        'apps/tui/**/*.tsx',
+      ]);
     });
 
     test('3.4.3 enables react and disables no-unknown-property for a renderer map with no dom entry', ({ zyplux }) => {
       const domlessConfig = zyplux({ react: { opentui: ['apps/tui/**'] } });
       expect(hasReactSettings(domlessConfig)).toBe(true);
-      expect(isRuleDisabled(domlessConfig, 'react/no-unknown-property')).toBe(true);
+      expect(isRuleDisabled(domlessConfig, '@eslint-react/dom-no-unknown-property')).toBe(true);
     });
 
     test('3.4.4 treats an empty renderer map or a renderer with no globs as no react', ({ zyplux }) => {

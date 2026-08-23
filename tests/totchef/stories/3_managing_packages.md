@@ -63,11 +63,7 @@ clear message.
 
 ### 3.3.1 url fetches installer pipes to bash diffs presence
 
-`[url.<name>]` fetches an installer URL and pipes it to `bash`, optionally with
-`args`. Presence (not version) is what's diffed: if the binary is missing it's
-installed; if present it's updated. Because version isn't tracked, a present tool
-shows `would sync` in a plan and re-runs its `update_action` on every `up` — reported
-as `unchanged` when the binary itself doesn't change.
+`[url.<name>]` fetches an installer URL and pipes it to `bash`, optionally with `args` and installer `env` variables. Presence (not version) is what's diffed: if the binary is missing it's installed; if present it's updated. Because version isn't tracked, a present tool shows `would sync` in a plan and re-runs its `update_action` on every `up` — reported as `unchanged` when the binary itself doesn't change.
 
 ### 3.3.2 binary name defaults to entry name overridable with bin
 

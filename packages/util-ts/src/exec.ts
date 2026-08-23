@@ -79,7 +79,7 @@ const spawnProcess = (argv: string[], { cwd, env, nothrow, quiet, stdin }: Spawn
         shouldMerge ? Buffer.concat(merged) : Buffer.concat(stdoutChunks),
         shouldMerge ? Buffer.alloc(0) : Buffer.concat(stderrChunks),
       );
-      if (result.exitCode !== 0 && !nothrow) {
+      if (!nothrow && result.exitCode !== 0) {
         reject(new ExecError(argv, result));
         return;
       }

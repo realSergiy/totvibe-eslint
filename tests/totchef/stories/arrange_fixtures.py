@@ -642,11 +642,11 @@ def zyp_skills(
     recipe: RecipeBuilder, system: FakeSystem, terminal: FakeTerminal, http: FakeHttp, home: Path
 ) -> FakeSkillsRepo:
     (
-        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and pnpm/pnpx sit on PATH. """
+        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and node/pnpm/pnpx sit on PATH. """
         """Program the repo's boundary behavior on the returned FakeSkillsRepo."""
     )
     recipe.declares("skills", repos=["zyplux/zyp-skills"])
-    system.has("pnpx", "pnpm")
+    system.has("node", "pnpx", "pnpm")
     return FakeSkillsRepo("zyplux/zyp-skills", home, terminal, http)
 
 

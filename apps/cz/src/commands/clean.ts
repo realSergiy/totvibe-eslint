@@ -1,4 +1,4 @@
-import { $, checkInsideWorkTree, ensure, findGitRepos, readTrimmed } from '@zyplux/util';
+import { $, ensure, findGitRepos, isInsideWorkTree, readTrimmed } from '@zyplux/util';
 import path from 'node:path';
 
 import type { InferValue } from '#optique';
@@ -46,9 +46,7 @@ const cleanRepo = async (repo: string, options: CleanRepoOptions) => {
 export const runClean = async ({ dryRun, exclude }: CleanConfig) => {
   const cwd = process.cwd();
 
-  const repos = (await checkInsideWorkTree(cwd))
-    ? [await readTrimmed($.git.showToplevel(cwd))]
-    : await findGitRepos(cwd);
+  const repos = (await isInsideWorkTree(cwd)) ? [await readTrimmed($.git.showToplevel(cwd))] : await findGitRepos(cwd);
   ensure(repos.length > 0, `no git repo found at or under ${cwd}`);
 
   const repoBasenames = new Set(repos.map(repo => path.basename(repo)));

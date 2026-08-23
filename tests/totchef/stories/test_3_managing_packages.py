@@ -183,21 +183,26 @@ def test_3_3_1_url_fetches_installer_pipes_to_bash_diffs_presence(
     recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
 ) -> None:
     """`[url.<name>]` fetches an installer URL and pipes it to bash; presence (not version) is diffed."""
-    recipe.declares("url", "pnpm", url="https://get.pnpm.io/install.sh")
+    recipe.declares(
+        "url",
+        "pnpm",
+        url="https://get.pnpm.io/install.sh",
+        env={"PNPM_VERSION": "next-12"},
+    )
     http.arrange("get.pnpm.io/install.sh", "#!/bin/bash\necho installing pnpm")
 
     def install_pnpm() -> None:
         system.has("pnpm")
 
-    terminal.arrange("bash -s --", effect=install_pnpm)
+    terminal.arrange("env PNPM_VERSION=next-12 bash -s --", effect=install_pnpm)
     terminal.arrange("pnpm --version", "11.13.1")
 
     report = totchef.up()
 
     report.assert_shows("url.pnpm", "installed")
     http.expect_fetched("get.pnpm.io/install.sh")
-    terminal.expect_ran("bash -s --")
-    assert terminal.stdin_for("bash -s --") == b"#!/bin/bash\necho installing pnpm"
+    terminal.expect_ran("env PNPM_VERSION=next-12 bash -s --")
+    assert terminal.stdin_for("env PNPM_VERSION=next-12 bash -s --") == b"#!/bin/bash\necho installing pnpm"
 
 
 def test_3_3_2_binary_name_defaults_to_entry_name_overridable_with_bin(

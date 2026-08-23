@@ -1,4 +1,4 @@
-import pkg from '#package.json' with { type: 'json' };
+import { loadPackageVersion } from '@zyplux/util';
 
 import { assertTagVersionCommand, runAssertTagVersion } from './commands/assert-tag-version.ts';
 import { bootstrapNpmTargetCommand, runBootstrapNpmTarget } from './commands/bootstrap-npm-target.ts';
@@ -12,7 +12,7 @@ import { releaseBumpedTargetsCommand, runReleaseBumpedTargets } from './commands
 import { runTest, testCommand } from './commands/test.ts';
 import { defineProgram, message, or, run } from './optique.ts';
 
-const VERSION = pkg.version;
+const VERSION = loadPackageVersion(import.meta.url);
 
 const program = defineProgram({
   metadata: {

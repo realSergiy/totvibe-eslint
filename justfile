@@ -54,14 +54,15 @@ check: install knip typecheck lint test cerberus
 
 # Upgrade deps across both workspaces: ncu bumps JS ranges; uv lock --upgrade + uv-bump raise Python >= floors. Forwards extra args to ncu.
 upgrade *args='':
-    pnpm run upgrade -- {{ args }}
+    pnpm run upgrade {{ args }}
+    pnpm install
     uv lock --upgrade
     uvx uv-bump -v
     uv sync --all-packages --all-groups
 
 # Interactively select JS upgrades, then non-interactively upgrade Python (uv has no interactive mode) and reinstall both.
 upgrade-interactive:
-    pnpm run upgrade -- -i
+    pnpm run upgrade -i
     pnpm install
     uv lock --upgrade
     uvx uv-bump -v

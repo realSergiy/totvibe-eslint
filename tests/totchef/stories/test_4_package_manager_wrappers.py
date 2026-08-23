@@ -258,3 +258,22 @@ def test_4_3_3_pnpm_installs_globals_into_pnpm_home_not_an_inherited_data_dir(
         run.transcript
     )  # landed in the operator's own pnpm home
     assert run.owners["/home/tester/inherited-data/pnpm"] is None, run.transcript  # never the inherited data dir
+
+
+def test_4_3_4_pnpm_keeps_a_global_within_its_declared_major(
+    recipe: RecipeBuilder, terminal: FakeTerminal, totchef: Totchef, system: FakeSystem
+) -> None:
+    """A package range such as node@26 refreshes within that range while reporting under the package name."""
+    recipe.declares("pnpm", packages=["node@26"])
+    system.has("pnpm")
+    terminal.arrange("pnpm list -g", _global_list(("node", "26.6.0")))
+
+    def install_node() -> None:
+        terminal.arrange("pnpm list -g", _global_list(("node", "26.7.0")))
+
+    terminal.arrange("pnpm add -g --ignore-scripts node@26", effect=install_node)
+
+    report = totchef.up()
+
+    report.assert_shows("pnpm.node", "upgraded")
+    terminal.expect_ran("pnpm add -g --ignore-scripts node@26")

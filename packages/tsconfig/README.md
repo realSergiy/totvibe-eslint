@@ -1,23 +1,17 @@
 # @zyplux/tsconfig
 
-Shared TypeScript configs for the zyplux org. Project-reference ready — `composite`, emitting `.js` + `.d.ts` to `dist/`, run with `tsc -b`.
-
-## Use
-
-`tsconfig.json`:
+TypeScript presets for solution-style monorepos.
 
 ```jsonc
 { "extends": "@zyplux/tsconfig/node.json", "include": ["src"] }
 ```
 
-Variants, all extending `base`:
+`node`, `bun`, `cfworker`, `web`, and `tui` are composite and emit declarations only to `.tsbuild/` for `tsc -b`.
 
-| Variant | Environment                          |
-| ------- | ------------------------------------ |
-| `node`  | Node                                 |
-| `bun`   | Bun                                  |
-| `web`   | browser + React DOM                  |
-| `tui`   | terminal React (`@opentui/react`)    |
-| `iso`   | none — isomorphic, no env globals    |
+Publishable Node packages use a separate build config:
 
-`base` is abstract; extend a variant, not `base`. Add `dist/` to `.gitignore`.
+```jsonc
+{ "extends": "@zyplux/tsconfig/node-pub.json", "include": ["src"] }
+```
+
+`node-pub` emits installable JavaScript and declarations to `dist/`.

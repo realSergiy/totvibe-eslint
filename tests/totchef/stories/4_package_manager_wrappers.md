@@ -82,3 +82,7 @@ inherited from the pre-drop environment would strand globals outside the operato
 home. The cook pins `PNPM_HOME` and puts its bin dir on PATH before any global
 command, so the tree lands in `~/.local/share/pnpm` — where the operator's shell
 finds it. Verified end-to-end in a container.
+
+### 4.3.4 pnpm keeps a global within its declared major
+
+A versioned package specifier such as `node@26` reports under the package's name and refreshes through the declared range on every run, so the latest Node 26 release is installed without drifting into a later major.

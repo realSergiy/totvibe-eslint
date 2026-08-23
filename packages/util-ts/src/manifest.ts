@@ -1,8 +1,12 @@
 import { readdir } from 'node:fs/promises';
+import { findPackageJSON } from 'node:module';
 import path from 'node:path';
 
 import type { PackageJson, PyProject } from './contracts.ts';
 
+import { ensure } from './assert.ts';
+import { PackageVersionSchema } from './contracts.ts';
+import { readJsonSync } from './json.ts';
 import { attemptAsync } from './result.ts';
 import { $ } from './shell.ts';
 
@@ -10,6 +14,12 @@ const LOCAL_NPM_PROTOCOL = /^(file|link|portal|workspace):/;
 const PYTHON_REQUIREMENT_NAME = /^\s*([A-Za-z0-9][A-Za-z0-9._-]*)/;
 const NPM_DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'] as const;
 const MANIFEST_BASENAMES = new Set(['package.json', 'pyproject.toml']);
+
+export const loadPackageVersion = (base: string | URL) => {
+  const manifestPath = findPackageJSON('.', base);
+  ensure(manifestPath !== undefined, `could not find package.json from ${base.toString()}`);
+  return readJsonSync(manifestPath, PackageVersionSchema).version;
+};
 
 export const repositoryUrl = (repository: PackageJson['repository']) =>
   typeof repository === 'string' ? repository : repository?.url;
@@ -64,7 +74,7 @@ export const pythonRequirementNames = (manifest: PyProject) => {
   return names;
 };
 
-export const checkInsideWorkTree = async (dir: string) => {
+export const isInsideWorkTree = async (dir: string) => {
   const probe = await $.git.isInsideWorkTree(dir);
   return probe.exitCode === 0 && probe.text().trim() === 'true';
 };
@@ -102,7 +112,7 @@ export const findGitRepos = async (dir: string) => {
 };
 
 export const findManifests = async (dir: string) => {
-  if (await checkInsideWorkTree(dir)) return trackedManifests(dir);
+  if (await isInsideWorkTree(dir)) return trackedManifests(dir);
   const repos = await findGitRepos(dir);
   const listings = await Promise.all(repos.map(repo => trackedManifests(repo)));
   return listings.flat();

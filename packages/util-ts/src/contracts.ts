@@ -7,6 +7,7 @@ export const UnknownArraySchema = z.array(z.unknown());
 export const UnknownArrayRecordSchema = z.record(z.string(), UnknownArraySchema);
 
 export const IdSchema = z.object({ id: z.string() });
+export const PackageVersionSchema = z.object({ version: z.string() });
 export const VersionKeySchema = z.object({ version: z.string() });
 
 const CatalogsSchema = z.record(z.string(), LooseRecordSchema);

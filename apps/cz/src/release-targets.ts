@@ -1,4 +1,4 @@
-import { $, ensure, fetchJson, httpOk, parseJson, parseToml, readTrimmed } from '@zyplux/util';
+import { $, ensure, fetchJson, isHttpOk, parseJson, parseToml, readTrimmed } from '@zyplux/util';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -38,10 +38,10 @@ const MANIFEST_MEDIA_TYPES = [
 const fetchGhcrAuth = (repo: string) =>
   fetchJson(`https://ghcr.io/token?scope=repository:${repo}:pull`, GhcrTokenSchema);
 
-const ghcrImagePublished = async (repo: string, tag: string) => {
+const isGhcrImagePublished = async (repo: string, tag: string) => {
   const auth = await fetchGhcrAuth(repo);
   if (!auth) return false;
-  return httpOk(`https://ghcr.io/v2/${repo}/manifests/${tag}`, {
+  return isHttpOk(`https://ghcr.io/v2/${repo}/manifests/${tag}`, {
     headers: {
       Accept: MANIFEST_MEDIA_TYPES,
       Authorization: `Bearer ${auth.token}`,
@@ -50,14 +50,14 @@ const ghcrImagePublished = async (repo: string, tag: string) => {
   });
 };
 
-const checkPackagePublished = async ({ kind, label }: Target, version: string) => {
+const isPackagePublished = async ({ kind, label }: Target, version: string) => {
   if (kind === 'npm') {
-    return httpOk(`https://registry.npmjs.org/${label.replace('/', '%2f')}/${version}`);
+    return isHttpOk(`https://registry.npmjs.org/${label.replace('/', '%2f')}/${version}`);
   }
   if (kind === 'pypi') {
-    return httpOk(`https://pypi.org/pypi/${label}/${version}/json`);
+    return isHttpOk(`https://pypi.org/pypi/${label}/${version}/json`);
   }
-  return ghcrImagePublished(label.replace(/^ghcr\.io\//, ''), version);
+  return isGhcrImagePublished(label.replace(/^ghcr\.io\//, ''), version);
 };
 
 export const loadReleaseTargets = async (): Promise<ReleaseTarget[]> => {
@@ -65,7 +65,7 @@ export const loadReleaseTargets = async (): Promise<ReleaseTarget[]> => {
   const manifest = parseToml(await readFile(path.join(repoRoot, 'release-targets.toml'), 'utf8'), ManifestSchema);
   return manifest.target.map(spec => ({
     dir: path.join(repoRoot, path.dirname(spec.version.file)),
-    isPublished: async (version: string) => checkPackagePublished(spec, version),
+    isPublished: async (version: string) => isPackagePublished(spec, version),
     kind: spec.kind,
     label: spec.label,
     readVersion: async () => readVersion(repoRoot, spec.version),

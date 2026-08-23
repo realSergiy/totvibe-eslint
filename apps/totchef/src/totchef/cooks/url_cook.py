@@ -56,6 +56,7 @@ class UrlEntry(EntrySpec):
     url: str
     bin: str | None = None
     args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
     update_action: list[str] | Literal["rerun-installer"] | None = None
     update_guard: str | None = None
 
@@ -71,8 +72,10 @@ class UrlEntry(EntrySpec):
         return self
 
 
-def run_installer(url: str, args: list[str], note: str) -> None:
-    shell.stream(["bash", "-s", "--", *args], note=note, stdin=fetch_url(url))
+def run_installer(url: str, args: list[str], env: dict[str, str], note: str) -> None:
+    assignments = [f"{name}={value}" for name, value in env.items()]
+    command = ["env", *assignments] if assignments else []
+    shell.stream([*command, "bash", "-s", "--", *args], note=note, stdin=fetch_url(url))
 
 
 def update_existing(entry: UrlEntry, bin_path: Path) -> None:
@@ -88,7 +91,7 @@ def update_existing(entry: UrlEntry, bin_path: Path) -> None:
         guard_command = f"PATH={shlex.quote(str(bin_path.parent))}:$PATH; {guard}"
         shell.stream(["bash", "-c", guard_command], note=f"Update guard: {guard}")
     if action == RERUN_INSTALLER:
-        run_installer(entry.url, entry.args, note=f"Updating from {entry.url}")
+        run_installer(entry.url, entry.args, entry.env, note=f"Updating from {entry.url}")
     elif isinstance(action, list):
         shell.stream(
             [str(bin_path), *action],
@@ -132,7 +135,7 @@ class UrlCook(VersionedCook):
 
         if (existing := find_binary(bin_name)) is None:
             try:
-                run_installer(entry.url, entry.args, note=f"Installing {entry.url}")
+                run_installer(entry.url, entry.args, entry.env, note=f"Installing {entry.url}")
             except (OSError, subprocess.CalledProcessError, ValueError) as exc:
                 return SyncOutcome("hard_fail", f"{name} install failed: {exc}")
             if found := find_binary(bin_name):

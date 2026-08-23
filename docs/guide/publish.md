@@ -33,11 +33,11 @@ publishing can be enabled, and that first publish needs a credential.
      Environment *(blank)*
    - The `npm` job in `release.yml` runs with **no** `environment:`, so leave
      Environment blank — npm matches the OIDC environment claim exactly.
-   - CLI alternative (requires interactive 2FA; `npx npm@11` runs a pinned npm version without a separate install):
+   - CLI alternative (requires interactive 2FA; `pnpx npm@11` runs a pinned npm version without a separate install):
 
      ```sh
-     npx npm@11 login
-     npx npm@11 trust github @zyplux/util --file release.yml --repo zyplux/zyplux --allow-publish
+     pnpx npm@11 login
+     pnpx npm@11 trust github @zyplux/util --file release.yml --repo zyplux/zyplux --allow-publish
      ```
 
 3. From then on `just release` publishes new versions via OIDC — no token, with
