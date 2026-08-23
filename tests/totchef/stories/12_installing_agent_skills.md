@@ -22,12 +22,9 @@ what's installed.
 repo at a time. The extra `universal` target keeps the CLI in symlink mode — a
 single-agent add silently switches to copy mode, stranding the canonical store.
 
-### 12.1.2 skills requires pnpm and pnpx and fails hard pointing at url pnpm
+### 12.1.2 skills requires node pnpm and pnpx and fails hard pointing at pnpm
 
-Requires both `pnpx` (runs the `skills` CLI) and `pnpm` (links a cli-kind skill's
-binary — see 12.1.9) to be present, depending on the `[url]` pnpm installer; if
-either is missing, the run fails hard telling the operator the `[url]` pnpm install
-must run first.
+Requires `node`, `pnpm`, and `pnpx` to be present, depending on the `[pnpm]` package section; if any is missing, the run fails hard telling the operator that `[pnpm]` must run first.
 
 ### 12.1.3 each skill gets its own report row with version and content id
 
@@ -71,15 +68,7 @@ repos run concurrently rather than one after another.
 
 ### 12.1.9 a cli-kind skill binary is chmod and linked onto path
 
-A skill that ships its own `package.json` with a `bin` entry (a "cli"-kind skill,
-e.g. `peek`) gets its files installed by the `skills` CLI, but the CLI never
-chmods that binary executable or puts it on PATH. On every sync the cook chmods
-each installed skill's declared `bin` script(s) executable and runs `pnpm link`
-from within the skill's canonical store directory, so the binary resolves on PATH.
-A package.json without a `bin` entry is not a CLI and is left unlinked.
-This is best-effort and idempotent: it runs
-even on a converged re-run that skipped the CLI entirely (12.1.11), so the link
-is restored if it was removed.
+A skill that ships its own `package.json` with a `bin` entry (a "cli"-kind skill, e.g. `peek`) gets its files installed by the `skills` CLI, but the CLI never chmods that executable or puts it on PATH. On every sync the cook chmods each declared `bin` script and symlinks it into pnpm's global bin directory, so the binary resolves on PATH while its canonical skill directory remains the single source of truth. A package.json without a `bin` entry is not a CLI and is left unlinked. This is best-effort and idempotent: it runs even on a converged re-run that skipped the CLI entirely (12.1.11), so the link is restored if it was removed.
 
 ### 12.1.10 a plan shows one repo row before install and per skill rows after
 
@@ -127,3 +116,15 @@ re-adds its repo, letting the CLI replace the entry with the symlink.
 A skill first appearing during a re-add of an already-installed repo (upstream
 added it) gets its own per-skill row, reporting "installed" — not just the sync
 log mention of 12.1.6.
+
+### 12.1.17 a cli-kind skill preserves an existing non-symlink binary
+
+A skill CLI link may replace an earlier symlink, but it warns and leaves an existing regular file or directory untouched because that path belongs to another installer or the operator.
+
+### 12.1.18 a scoped cli-kind skill uses its unscoped binary name
+
+For a string-form `bin`, a scoped package such as `@zyplux/peek` links the command as `peek`, matching npm's unscoped executable-name convention.
+
+### 12.1.19 cli-kind skill bins cannot escape their directories
+
+Only string command-to-path entries are considered, command names cannot contain path separators, and resolved scripts must remain inside the skill directory.

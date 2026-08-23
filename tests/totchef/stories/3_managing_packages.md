@@ -35,6 +35,10 @@ After the transaction, `[apt_pkg]` reads `/var/run/reboot-required` (and its
 `.pkgs` companion naming the packages that caused it); when present, the
 notice is carried as a delayed message into the `Action required` block.
 
+### 3.1.5 package lists reject duplicate entries
+
+Every package-list section rejects exact duplicate entries during recipe validation instead of scheduling the same package twice.
+
 ## 3.2 Install and refresh snaps
 
 > As an operator, I want to declare snap packages and have them installed and
@@ -63,11 +67,7 @@ clear message.
 
 ### 3.3.1 url fetches installer pipes to bash diffs presence
 
-`[url.<name>]` fetches an installer URL and pipes it to `bash`, optionally with
-`args`. Presence (not version) is what's diffed: if the binary is missing it's
-installed; if present it's updated. Because version isn't tracked, a present tool
-shows `would sync` in a plan and re-runs its `update_action` on every `up` — reported
-as `unchanged` when the binary itself doesn't change.
+`[url.<name>]` fetches an installer URL and pipes it to `bash`, optionally with `args` and installer `env` variables. Presence (not version) is what's diffed: if the binary is missing it's installed; if present it's updated. Because version isn't tracked, a present tool shows `would sync` in a plan and re-runs its `update_action` on every `up` — reported as `unchanged` when the binary itself doesn't change.
 
 ### 3.3.2 binary name defaults to entry name overridable with bin
 

@@ -16,9 +16,9 @@
     """`#hash` content id; a never-installed repo's skills are unknowable before its first `add`, so it plans """
     """as a single repo row that `list_reportable` splits into per-skill rows once the install lands. A skill """
     """of the "cli" kind (e.g. peek) ships its own package.json `bin`; the skills CLI installs its files but """
-    """never chmods or links that binary onto PATH, so this cook does — chmod +x plus `pnpm link` from the """
-    """skill's own directory, on every sync (even a converged one), best-effort and idempotent. Runs as the """
-    """invoking user; depends on [url] (pnpm)."""
+    """never chmods or links that binary onto PATH, so this cook does — chmod +x plus a symlink in pnpm's """
+    """global bin directory, on every sync (even a converged one), best-effort and idempotent. Runs as the """
+    """invoking user; depends on [pnpm] (Node and pnpm)."""
 )
 
 import json
@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from totchef import shell
 from totchef.cook_base import EntrySpec, SyncOutcome, VersionedCook
+from totchef.cooks.pnpm_cook import global_bin_dir
 from totchef.harness import fetch_latest_concurrent, fetch_url, find_binary
 
 if TYPE_CHECKING:
@@ -277,44 +278,71 @@ def describe_skill_changes(before: dict[str, str], after: dict[str, str]) -> str
     return "; ".join(parts) if parts else "no skills found"
 
 
-def bin_paths(package_json: Path) -> list[str]:
+def bin_entries(package_json: Path) -> dict[str, str]:
     (
         """The script path(s) a skill's package.json declares as `bin` — a dict of {name: path} for one-or-many """
         """named binaries, or a bare string for a single binary named after the package itself."""
     )
     try:
-        bin_field = json.loads(package_json.read_text(encoding="utf-8")).get("bin")
+        manifest = json.loads(package_json.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         logger.warning("could not read {package_json}: {exc}", package_json=package_json, exc=exc)
-        return []
+        return {}
+    bin_field = manifest.get("bin")
     if isinstance(bin_field, dict):
-        return list(bin_field.values())
-    return [bin_field] if bin_field else []
+        return {
+            name: path
+            for name, path in bin_field.items()
+            if isinstance(name, str) and name and "/" not in name and isinstance(path, str)
+        }
+    if isinstance(bin_field, str):
+        package_name = manifest.get("name")
+        bin_name = package_name.rsplit("/", 1)[-1] if isinstance(package_name, str) else package_json.parent.name
+        return {bin_name: bin_field} if bin_name else {}
+    return {}
 
 
-def link_cli_binary(pnpm: Path, name: str) -> None:
+def link_cli_binaries(name: str) -> None:
     (
         """A skill of the "cli" kind ships its own package.json `bin`; the skills CLI installs the files but """
-        """never chmods or links the binary onto PATH. Mirror zyp-skills' skillman.py: chmod the script """
-        """executable (git doesn't preserve the bit) and `pnpm link` from within the skill's canonical store """
-        """directory. Best-effort and idempotent — runs on every sync, so a """
+        """never chmods or links the binary onto PATH. Chmod the script executable (git doesn't preserve """
+        """the bit) and symlink it into pnpm's global bin directory. Best-effort and idempotent — runs on """
+        """every sync, so a """
         """converged re-run restores the link if it was removed."""
     )
     skill_dir = canonical_skills_dir() / name
     package_json = skill_dir / "package.json"
     if not package_json.exists():
         return
-    scripts = bin_paths(package_json)
-    if not scripts:
+    entries = bin_entries(package_json)
+    if not entries:
         return
-    for bin_path in scripts:
-        script = skill_dir / bin_path
-        if script.exists():
-            script.chmod(script.stat().st_mode | 0o111)
-    try:
-        shell.stream([str(pnpm), "link"], note=f"Linking {name} CLI binary", cwd=skill_dir)
-    except subprocess.CalledProcessError as exc:
-        logger.warning("{name}: could not link CLI binary: {exc}", name=name, exc=exc)
+    bin_dir = global_bin_dir()
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    skill_root = skill_dir.resolve()
+    for bin_name, bin_path in entries.items():
+        script = (skill_dir / bin_path).resolve()
+        if not script.is_relative_to(skill_root) or not script.is_file():
+            continue
+        script.chmod(script.stat().st_mode | 0o111)
+        link = bin_dir / bin_name
+        if link.is_symlink() and link.resolve() == script.resolve():
+            continue
+        if not link.is_symlink() and link.exists():
+            logger.warning(
+                "{name}: could not link {bin_name} CLI binary: {link} exists and is not a symlink",
+                name=name,
+                bin_name=bin_name,
+                link=link,
+            )
+            continue
+        try:
+            if link.is_symlink():
+                link.unlink()
+            link.symlink_to(script)
+            logger.info("Linked {bin_name} CLI binary", bin_name=bin_name)
+        except OSError as exc:
+            logger.warning("{name}: could not link {bin_name} CLI binary: {exc}", name=name, bin_name=bin_name, exc=exc)
 
 
 class SkillsCook(VersionedCook):
@@ -386,10 +414,11 @@ class SkillsCook(VersionedCook):
 
     @override
     def sync(self, to_install: list[str], to_upgrade: list[str]) -> SyncOutcome:
+        node = find_binary("node")
         pnpx = find_binary("pnpx")
         pnpm = find_binary("pnpm")
-        if not pnpx or not pnpm:
-            return SyncOutcome("hard_fail", "pnpm/pnpx not found — the [url.pnpm] section must run before [skills].")
+        if not node or not pnpx or not pnpm:
+            return SyncOutcome("hard_fail", "node/pnpm/pnpx not found — the [pnpm] section must run before [skills].")
 
         repos = list(dict.fromkeys(self._repo_of(target) for target in to_install + to_upgrade))
         failures: list[str] = []
@@ -411,7 +440,7 @@ class SkillsCook(VersionedCook):
 
         for name, info in lockfile_skills().items():
             if info.source in self.repos:
-                link_cli_binary(pnpm, name)
+                link_cli_binaries(name)
 
         if failures:
             return SyncOutcome("hard_fail", f"{len(failures)} skill repo(s) failed: " + ", ".join(failures))

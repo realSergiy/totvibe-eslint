@@ -25,16 +25,16 @@ def test_12_1_1_skills_installs_each_declared_repo_via_the_skills_cli(
     terminal.expect_ran("pnpx skills add zyplux/zyp-skills -g --agent claude-code universal --skill '*' -y")
 
 
-def test_12_1_2_skills_requires_pnpm_and_pnpx_and_fails_hard_pointing_at_url_pnpm(
+def test_12_1_2_skills_requires_node_pnpm_and_pnpx_and_fails_hard_pointing_at_pnpm(
     recipe: RecipeBuilder, totchef: Totchef
 ) -> None:
-    """If pnpm or pnpx is missing the run fails hard, telling the operator the [url] pnpm install must run first."""
+    """Missing node, pnpm, or pnpx fails hard, telling the operator the [pnpm] dependencies must run first."""
     recipe.declares("skills", repos=["zyplux/zyp-skills"])
 
     report = totchef.up()
 
     report.assert_hard_failed()
-    report.assert_logged("[url.pnpm]")
+    report.assert_logged("[pnpm]")
 
 
 def test_12_1_3_each_skill_gets_its_own_report_row_with_version_and_content_id(
@@ -148,7 +148,7 @@ def test_12_1_7_a_failed_repo_reports_hard_naming_the_failed_repo(
 ) -> None:
     """If `skills add` fails for a repo, the run reports a hard failure naming it."""
     recipe.declares("skills", repos=["realSergiy/does-not-exist"])
-    system.has("pnpx", "pnpm")
+    system.has("node", "pnpx", "pnpm")
     terminal.arrange("skills add realSergiy/does-not-exist", exit_code=1)
 
     report = totchef.up()
@@ -163,7 +163,7 @@ def test_12_1_8_multiple_repos_install_concurrently(
     """Multiple declared repos install concurrently, each via its own `skills add` invocation."""
     repos: list[RecipeValue] = ["zyplux/zyp-skills", "vercel-labs/agent-skills"]
     recipe.declares("skills", repos=repos)
-    system.has("pnpx", "pnpm")
+    system.has("node", "pnpx", "pnpm")
     terminal.expect_concurrent(*(f"skills add {repo}" for repo in repos), parties=len(repos))
 
     report = totchef.up()
@@ -177,29 +177,31 @@ def test_12_1_9_a_cli_kind_skill_binary_is_chmod_and_linked_onto_path(
 ) -> None:
     (
         """A cli-kind skill's package.json `bin` script is chmod'd executable and """
-        """`pnpm link`ed from its own directory, so it resolves on PATH — on every sync, """
+        """symlinked into pnpm's global bin directory, so it resolves on PATH — on every sync, """
         """even a converged one that skipped the CLI."""
     )
     zyp_skills.delivers(
         ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
         files={"peek": {"package.json": '{"bin": "peek.py"}', "peek.py": "#!/usr/bin/env python3\n"}},
     )
-    terminal.arrange("pnpm link")
     zyp_skills.upstream_matches()
 
     skill_dir = home / ".agents" / "skills" / "peek"
+    global_bin = home / ".local" / "share" / "pnpm" / "bin" / "peek"
 
     totchef.up().assert_succeeded()  # installed; the binary is chmod'd and linked alongside
-    terminal.expect_ran("pnpm link")
-    assert terminal.cwd_for("pnpm link") == skill_dir
+    assert global_bin.is_symlink()
+    assert global_bin.resolve() == skill_dir / "peek.py"
     assert (
         skill_dir / "peek.py"
     ).stat().st_mode & 0o111  # git doesn't preserve the executable bit; the cook restores it
 
     (skill_dir / "peek.py").chmod(0o644)  # bit dropped out of band
+    global_bin.unlink()
     totchef.up().assert_succeeded()  # converged: upstream matches, so no reinstall — yet the link is restored
     assert terminal.count("skills add zyplux/zyp-skills") == 1
     assert (skill_dir / "peek.py").stat().st_mode & 0o111
+    assert global_bin.resolve() == skill_dir / "peek.py"
 
 
 def test_12_1_10_a_plan_shows_one_repo_row_before_install_and_per_skill_rows_after(
@@ -321,3 +323,70 @@ def test_12_1_16_a_re_add_reports_a_newly_landed_skill_as_its_own_installed_row(
 
     report.assert_shows("skills.zyplux/zyp-skills/totchef", "upgraded")
     report.assert_shows("skills.zyplux/zyp-skills/mermaid", "installed")
+
+
+def test_12_1_17_a_cli_kind_skill_preserves_an_existing_non_symlink_binary(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """A skill CLI link never replaces an unrelated regular file that already owns the command name."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={"peek": {"package.json": '{"bin": "peek.py"}', "peek.py": "#!/usr/bin/env python3\n"}},
+    )
+    global_bin = home / ".local" / "share" / "pnpm" / "bin" / "peek"
+    global_bin.parent.mkdir(parents=True)
+    global_bin.write_text("user-owned\n")
+
+    report = totchef.up()
+
+    report.assert_succeeded()
+    report.assert_logged("not a symlink")
+    assert not global_bin.is_symlink()
+    assert global_bin.read_text() == "user-owned\n"
+
+
+def test_12_1_18_a_scoped_cli_kind_skill_uses_its_unscoped_binary_name(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """A string bin for @scope/package links as package, matching npm's command-name convention."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={
+            "peek": {
+                "package.json": '{"name": "@zyplux/peek", "bin": "peek.py"}',
+                "peek.py": "#!/usr/bin/env python3\n",
+            }
+        },
+    )
+
+    totchef.up().assert_succeeded()
+
+    global_bin = home / ".local" / "share" / "pnpm" / "bin" / "peek"
+    assert global_bin.resolve() == home / ".agents" / "skills" / "peek" / "peek.py"
+
+
+def test_12_1_19_cli_kind_skill_bins_cannot_escape_their_directories(
+    zyp_skills: FakeSkillsRepo, totchef: Totchef, home: Path
+) -> None:
+    """Malformed bin names, non-string paths, and paths outside the skill are ignored."""
+    zyp_skills.delivers(
+        ("peek", "ffff6666aaaa7777bbbb8888cccc9999dddd0000"),
+        files={
+            "peek": {
+                "package.json": (
+                    '{"bin": {"peek": "peek.py", "../outside": "peek.py", "wrong": "../outside.py", "bad": 42}}'
+                ),
+                "peek.py": "#!/usr/bin/env python3\n",
+            }
+        },
+    )
+    skills_dir = home / ".agents" / "skills"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "outside.py").write_text("user-owned\n")
+
+    totchef.up().assert_succeeded()
+
+    global_bin = home / ".local" / "share" / "pnpm" / "bin"
+    assert (global_bin / "peek").is_symlink()
+    assert not (global_bin / "wrong").exists()
+    assert not (global_bin.parent / "outside").exists()

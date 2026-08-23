@@ -2,10 +2,10 @@ import type { CliRunner } from '@zyplux/tests-fixtures/cli';
 
 import { cliTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
-import type { Catalog } from './act.ts';
+import type { Catalog, PublishedPackage, TsconfigPresets } from './act.ts';
 import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange.ts';
 
-import { createCatalog, createCz } from './act.ts';
+import { createCatalog, createCz, loadPublishedPackages, loadTsconfigPresets } from './act.ts';
 import {
   createInitRepo,
   createLiveWorkspace,
@@ -22,9 +22,11 @@ type CzFixtures = {
   catalog: Catalog;
   cz: CliRunner;
   liveWorkspace: LiveWorkspace;
+  publishedPackages: PublishedPackage[];
   registries: Registries;
   release: Release;
   repo: Repo;
+  tsconfigPresets: TsconfigPresets;
 };
 
 export const test = cliTest.extend<CzFixtures>({
@@ -37,6 +39,9 @@ export const test = cliTest.extend<CzFixtures>({
   liveWorkspace: async ({}, use) => {
     await use(createLiveWorkspace());
   },
+  publishedPackages: async ({}, use) => {
+    await use(loadPublishedPackages());
+  },
   registries: async ({ network }, use) => {
     await use(createRegistries(network));
   },
@@ -45,6 +50,9 @@ export const test = cliTest.extend<CzFixtures>({
   },
   repo: async ({ shell, tempDir }, use) => {
     await use(createRepo(shell, tempDir));
+  },
+  tsconfigPresets: async ({}, use) => {
+    await use(loadTsconfigPresets());
   },
 });
 

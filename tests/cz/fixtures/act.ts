@@ -4,12 +4,19 @@ import type { FetchFake } from '@zyplux/tests-fixtures/fetch';
 import type { TempDir } from '@zyplux/tests-fixtures/fs';
 
 import { runCz } from '@zyplux/cz';
-import { DepsCatalogSchema } from '@zyplux/cz/contracts';
+import { DepsCatalogSchema, ManifestSchema, VersionFieldSchema } from '@zyplux/cz/contracts';
 import { createCliRunner } from '@zyplux/tests-fixtures/cli';
-import { parseJson } from '@zyplux/util';
+import { ensure, parseJson, parseToml } from '@zyplux/util';
+import { LooseRecordSchema } from '@zyplux/util/contracts';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const workspaceRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const configDir = path.join(workspaceRoot, 'packages/tsconfig');
+const DEPENDENCY_KEY_PARTS = 2;
 
 export type Catalog = {
   loadRepos: () => Promise<string[]>;
@@ -23,11 +30,36 @@ export type Catalog = {
   writeManifest: (relativePath: string, content: string) => Promise<void>;
 };
 
+export type PublishedPackage = { files: string[]; label: string; targets: string[] };
+
+export type TsconfigPresets = {
+  base: EmitPolicy & { composite: boolean };
+  baseDeclaresModules: boolean;
+  nodePub: EmitPolicy;
+  variants: Record<string, { module: string; moduleResolution: string }>;
+};
+
 type DepsDevSourceRepo = string | { repo: string; via: 'links' };
+
+type EmitPolicy = {
+  declarationMap: boolean;
+  emitDeclarationOnly: boolean;
+  outDir: string;
+  rewriteRelativeImportExtensions: boolean;
+  tsBuildInfoFile: string;
+};
 
 type RunCatalogOptions = { out?: string };
 
 const escapeRegExp = (text: string) => text.replaceAll(/[$()*+.?[\\\]^{|}]/g, String.raw`\$&`);
+
+const loadRecord = (file: string) => parseJson(readFileSync(file, 'utf8'), LooseRecordSchema);
+
+const listPathTargets = (field: unknown): string[] => {
+  if (typeof field === 'string') return field.startsWith('./') && !field.includes('*') ? [field] : [];
+  if (typeof field !== 'object' || field === null) return [];
+  return Object.values(field).flatMap(value => listPathTargets(value));
+};
 
 const depsDevDefaultVersion = () =>
   Response.json({ versions: [{ isDefault: true, versionKey: { version: '1.0.0' } }] });
@@ -38,6 +70,69 @@ const depsDevSourceRepoResponse = (sourceRepo: DepsDevSourceRepo) =>
     : Response.json({ links: [{ label: 'SOURCE_REPO', url: `https://${sourceRepo.repo}` }] });
 
 export const createCz = () => createCliRunner(runCz);
+
+const loadBoolean = (record: Record<string, unknown>, key: string) => {
+  const value = record[key];
+  ensure(typeof value === 'boolean', `${key} is not a boolean`);
+  return value;
+};
+
+const loadEmitPolicy = (preset: Record<string, unknown>) => ({
+  declarationMap: loadBoolean(preset, 'declarationMap'),
+  emitDeclarationOnly: loadBoolean(preset, 'emitDeclarationOnly'),
+  outDir: VersionFieldSchema.parse(preset['outDir']),
+  rewriteRelativeImportExtensions: preset['rewriteRelativeImportExtensions'] === true,
+  tsBuildInfoFile: VersionFieldSchema.parse(preset['tsBuildInfoFile']),
+});
+
+export const loadTsconfigPresets = (): TsconfigPresets => {
+  const base = LooseRecordSchema.parse(loadRecord(path.join(configDir, 'base.json'))['compilerOptions']);
+  const nodePub = LooseRecordSchema.parse(loadRecord(path.join(configDir, 'node-pub.json'))['compilerOptions']);
+  const variants = Object.fromEntries(
+    ['bun', 'cfworker', 'node', 'tui', 'web'].map(name => {
+      const preset = LooseRecordSchema.parse(loadRecord(path.join(configDir, `${name}.json`))['compilerOptions']);
+      return [
+        name,
+        {
+          module: VersionFieldSchema.parse(preset['module']),
+          moduleResolution: VersionFieldSchema.parse(preset['moduleResolution']),
+        },
+      ];
+    }),
+  );
+  return {
+    base: { ...loadEmitPolicy(base), composite: loadBoolean(base, 'composite') },
+    baseDeclaresModules: 'module' in base || 'moduleResolution' in base,
+    nodePub: loadEmitPolicy(nodePub),
+    variants,
+  };
+};
+
+export const loadPublishedPackages = (): PublishedPackage[] => {
+  const releaseManifest = parseToml(
+    readFileSync(path.join(workspaceRoot, 'release-targets.toml'), 'utf8'),
+    ManifestSchema,
+  );
+  const packages: PublishedPackage[] = [];
+
+  for (const target of releaseManifest.target) {
+    if (target.kind !== 'npm') continue;
+    const packageDir = path.join(workspaceRoot, path.dirname(target.version.file));
+    const packOutput = execFileSync('pnpm', ['pack', '--dry-run', '--json'], { cwd: packageDir, encoding: 'utf8' });
+    const jsonStart = packOutput.lastIndexOf('{\n  "name"');
+    ensure(jsonStart !== -1, `pnpm pack returned no JSON for ${target.label}`);
+    const pack = parseJson(packOutput.slice(jsonStart), LooseRecordSchema);
+    ensure(Array.isArray(pack['files']), `pnpm pack returned no files for ${target.label}`);
+    const files = pack['files'].map(file => VersionFieldSchema.parse(LooseRecordSchema.parse(file)['path']));
+    const manifest = loadRecord(path.join(packageDir, 'package.json'));
+    const publishConfig = LooseRecordSchema.parse(manifest['publishConfig']);
+    const targets = [publishConfig['bin'], publishConfig['exports'], publishConfig['imports']].flatMap(field =>
+      listPathTargets(field),
+    );
+    packages.push({ files, label: target.label, targets });
+  }
+  return packages;
+};
 
 export const createCatalog = (cz: CliRunner, tempDir: TempDir, { logLines }: ConsoleCapture, network: FetchFake) => {
   const outPath = path.join(tempDir.path, 'catalog.json');
@@ -56,7 +151,7 @@ export const createCatalog = (cz: CliRunner, tempDir: TempDir, { logLines }: Con
     },
     stubDepsDev: sourceRepoByPackage => {
       for (const [key, sourceRepo] of Object.entries(sourceRepoByPackage)) {
-        const [system, name] = key.split(':');
+        const [system, name] = key.split(':', DEPENDENCY_KEY_PARTS);
         const base = `https://api.deps.dev/v3/systems/${system}/packages/${encodeURIComponent(name ?? '')}`;
         network.on(new RegExp(`^${escapeRegExp(base)}$`), () => depsDevDefaultVersion());
         network.on(new RegExp(String.raw`^${escapeRegExp(base)}/versions/1\.0\.0$`), () =>

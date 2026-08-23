@@ -98,7 +98,6 @@ packages = [
     "nala",
     "vainfo",
     "linux-crashdump",
-    "nvidia-driver-580-open",
     "nvidia-vaapi-driver",
     "zed",
     "brave-browser",
@@ -152,7 +151,7 @@ update_action = ["update"]
 # bash.apt_prereqs: binstall falls back to source builds (gcc + system OpenSSL).
 [cargo]
 depends_on = ["url.rustup", "bash.apt_prereqs"]
-packages = ["cargo-binstall", "cargo-update", "just", "just-lsp", "rumdl"]
+packages = ["cargo-binstall", "cargo-update", "just", "just-lsp", "rumdl", "shiki-cli"]
 
 [url.uv]
 url = "astral.sh/uv/install.sh"
@@ -168,25 +167,18 @@ update_action = ["self", "update"]
 depends_on = ["url.uv"]
 packages = ["ruff", "pyrefly", "graphifyy"]
 
-[url.node]
-url = "fnm.vercel.app/install"
-bin = "fnm"
-args = ["--skip-shell"]
-update_action = "rerun-installer"
-post_hook = 'eval "$(fnm env)" && fnm install 26 --use && fnm default 26'
-
 [url.pnpm]
 url = "get.pnpm.io/install.sh"
-depends_on = ["url.node"]
-update_action = ["self-update"]
+env = { PNPM_VERSION = "next-12" }
+update_action = ["self-update", "next-12"]
 
 [pnpm]
 depends_on = ["url.pnpm"]
-packages = ["@earendil-works/pi-coding-agent", "@zyplux/cz"]
+packages = ["node@26", "@earendil-works/pi-coding-agent", "@zyplux/cz"]
 post_hook = 'mkdir -p "$HOME/.local/bin" && ln -sf "${PNPM_HOME:-$HOME/.local/share/pnpm}/bin/pi" "$HOME/.local/bin/pi"'
 
 [skills]
-depends_on = ["url.pnpm"]
+depends_on = ["pnpm"]
 repos = ["zyplux/zyp-skills"]
 
 [url.claude]
@@ -235,11 +227,9 @@ GRUB_CMDLINE_LINUX_DEFAULT="$(echo "$GRUB_CMDLINE_LINUX_DEFAULT" | sed -E 's/ *m
 """
 post_hook = "update-grub"
 
-# The eGPU hard-freeze leaves no trace (docs/issues/egpu-freeze/investigation.md). Two causes, both here:
-# `pcie_ports=native` claims the PCIe services this firmware withholds — it answers `_OSC: platform does
-# not support [AER]`, which leaves the Thunderbolt root port with no aer_dev_* counters at all, so every
-# link error on the tunnel is discarded before anything can log it. It also takes DPC, which contains and
-# logs a fatal downstream error instead of letting it wedge the machine.
+# The eGPU hard-freeze leaves no trace (docs/issues/egpu-freeze/investigation.md).
+# `pcie_ports=native` requests native PCIe services, but on this machine AER/DPC activates only on
+# unrelated ports; the eGPU bridge chain exposes neither.
 # `crash_kexec_post_notifiers=1` runs the panic notifiers — kmsg_dump into efi_pstore — *before* kexec.
 # The default order tries kexec first, which plausibly hangs on a machine whose PCIe fabric just died,
 # and then no dmesg is written either. This trades a lower chance of the richer vmcore for a much higher
@@ -249,16 +239,13 @@ needs_root = true
 path = "/etc/default/grub.d/99-pcie-diagnostics.cfg"
 mode = "0644"
 content = """
-# Make Thunderbolt/PCIe faults observable; dump dmesg to pstore before attempting kexec.
+# Request native PCIe services where supported; dump dmesg to pstore before attempting kexec.
 GRUB_CMDLINE_LINUX_DEFAULT="$(echo "$GRUB_CMDLINE_LINUX_DEFAULT" | sed -E 's/ *(pcie_ports=[^ "]*|crash_kexec_post_notifiers=[^ "]*)//g') pcie_ports=native crash_kexec_post_notifiers=1"
 """
 post_hook = "update-grub"
 
-# The NMI hard-lockup detector already runs (`NMI watchdog: Enabled` every boot) and almost certainly
-# fired during the Aug 2026 freeze — but hardlockup_panic=0 means it only printk()s into a ring buffer
-# that never reached disk. Nothing was wired to anything persistent, which is why linux-crashdump's
-# armed kdump (crashkernel reserved, kexec_crash_loaded=1) captured nothing. Panicking on detection is
-# what turns it into a /var/crash vmcore and an efi_pstore dmesg that survives the hard reset.
+# A detected NMI hard lockup must panic before kdump or pstore can preserve evidence. This does not
+# capture a freeze that prevents the watchdog from reaching the panic path.
 # softlockup_panic stays 0 on purpose: it fires on benign long stalls and would cost real uptime.
 [file.hardlockup_capture]
 needs_root = true
@@ -281,9 +268,8 @@ mode = "0644"
 depends_on = ["apt_pkg"]
 post_hook = "systemctl daemon-reload; systemctl enable egpu-prime.service"
 
-# NVIDIA's replay counters are the one Thunderbolt link-health signal that survives this platform
-# withholding AER, and they need no reboot to start working. Rising replays before a freeze implicate
-# the tunnel; flat replays right up to one exonerate it. Either verdict ends a years-old guess.
+# NVIDIA's replay counters expose corrected link retries despite missing AER. Rising counters before a
+# freeze support progressive link degradation; flat counters do not exclude sudden power or link loss.
 [usr_local_sbin.egpu-link-probe]
 depends_on = ["apt_pkg"]
 

@@ -53,9 +53,19 @@ def chain_hooks(*commands: str | None) -> str | None:
 
 
 class PackagesConfig(EntrySpec):
-    """Schema shared by the plain package-list sections (cargo, uv, apt_pkg, snap)."""
+    """Schema shared by the plain package-list sections (cargo, uv, apt_pkg, snap, pnpm)."""
 
     packages: list[str] = []
+
+    @model_validator(mode="after")
+    def validate_unique_packages(self) -> PackagesConfig:
+        seen: set[str] = set()
+        for package in self.packages:
+            if package in seen:
+                failure = f"Duplicate package: {package}"
+                raise ValueError(failure)
+            seen.add(package)
+        return self
 
 
 @dataclass(frozen=True)

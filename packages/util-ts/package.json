@@ -1,6 +1,6 @@
 {
   "name": "@zyplux/util",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Small utilities: assertions, polling, bounded-concurrency mapping, zod-validated JSON reads, repo-URL normalization, package.json/pyproject manifest schemas, and a git/gh shell harness",
   "keywords": [
     "utilities",
@@ -48,7 +48,7 @@
     }
   },
   "scripts": {
-    "prepack": "tsc -b tsconfig.json"
+    "prepack": "node --eval \"require('node:fs').rmSync('dist', { force: true, recursive: true })\" && tsc -b --force tsconfig.json"
   },
   "dependencies": {
     "smol-toml": "catalog:"

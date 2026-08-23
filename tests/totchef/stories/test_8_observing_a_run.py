@@ -11,6 +11,7 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from rich.console import Console
 from rich.progress import MofNCompleteColumn, Progress, TimeElapsedColumn
 
@@ -18,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import ModuleType
 
-    import pytest
     from act_fixtures import Totchef
     from arrange_fixtures import FakeHttp, FakeSystem, FakeTerminal, RecipeBuilder
     from container_fixtures import ContainerRun
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 # 7.1 See a clear, color-coded report of what happened
 
 
+@pytest.mark.usefixtures("color_output")
 def test_8_1_1_report_table_color_coded_on_terminal_plain_toon_otherwise(
     scenario: Callable[[], RecipeBuilder],
     chef: Callable[[RecipeBuilder], Totchef],
@@ -177,8 +178,11 @@ def test_8_2_1_transient_progress_bar_cleared_on_exit(
         assert progress.live.transient is True  # transient ⇒ cleared on exit, leaving the logs above it
 
 
+@pytest.mark.usefixtures("color_output")
 def test_8_2_2_log_lines_colorized_and_tagged_per_cook(
-    monkeypatch: pytest.MonkeyPatch, log_internals: ModuleType, terminal_internals: ModuleType
+    monkeypatch: pytest.MonkeyPatch,
+    log_internals: ModuleType,
+    terminal_internals: ModuleType,
 ) -> None:
     """Each cook's log lines are tagged with its name in a stable per-cook color so concurrent output stays readable."""
 

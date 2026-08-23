@@ -426,6 +426,13 @@ def terminal(monkeypatch: pytest.MonkeyPatch) -> FakeTerminal:
     return fake
 
 
+@pytest.fixture
+def color_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Arrange a color-capable terminal without the process-wide ANSI opt-out."""
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
+
 @pytest.fixture(autouse=True)
 def http(monkeypatch: pytest.MonkeyPatch) -> FakeHttp:
     (
@@ -635,11 +642,11 @@ def zyp_skills(
     recipe: RecipeBuilder, system: FakeSystem, terminal: FakeTerminal, http: FakeHttp, home: Path
 ) -> FakeSkillsRepo:
     (
-        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and pnpm/pnpx sit on PATH. """
+        """The §12 baseline: `[skills]` declares zyplux/zyp-skills and node/pnpm/pnpx sit on PATH. """
         """Program the repo's boundary behavior on the returned FakeSkillsRepo."""
     )
     recipe.declares("skills", repos=["zyplux/zyp-skills"])
-    system.has("pnpx", "pnpm")
+    system.has("node", "pnpx", "pnpm")
     return FakeSkillsRepo("zyplux/zyp-skills", home, terminal, http)
 
 

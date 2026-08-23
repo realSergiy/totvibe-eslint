@@ -26,7 +26,7 @@ const splitLines = (text: string) => (text ? text.split('\n') : []);
 const listReleaseRunIds = async (jq: string, json = 'databaseId') =>
   splitLines(await readTrimmed($.gh.run.list({ event: 'release', jq, json, workflow: 'release.yml' })));
 
-const releaseExists = async (tag: string) =>
+const hasRelease = async (tag: string) =>
   (await readTrimmed($.gh.release.list({ jq: `any(.[]; .tagName == "${tag}")`, json: 'tagName' }))) === 'true';
 
 const buildTargets = async () => {
@@ -120,7 +120,7 @@ export const runReleaseBumpedTargets = async () => {
   for (const target of targets) {
     if (await target.isPublished()) {
       console.log(`Skipping ${target.label} ${target.version} (already published)`);
-    } else if (await releaseExists(target.tag)) {
+    } else if (await hasRelease(target.tag)) {
       console.log(`Skipping ${target.label} ${target.version} (release ${target.tag} already exists)`);
     } else {
       pending.push(target);

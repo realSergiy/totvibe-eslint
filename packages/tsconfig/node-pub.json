@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./node.json",
+  "compilerOptions": {
+    "declarationMap": false,
+    "emitDeclarationOnly": false,
+    "outDir": "${configDir}/dist",
+    "rewriteRelativeImportExtensions": true,
+    "tsBuildInfoFile": "${configDir}/.tsbuild/tsconfig-pub.tsbuildinfo"
+  }
+}
