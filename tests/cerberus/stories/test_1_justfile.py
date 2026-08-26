@@ -402,7 +402,6 @@ def test_1_11_5_does_not_count_a_runner_wrapping_an_unrelated_command(
     )
 
 
-def test_1_12_1_keeps_pnpm_separator_out_of_script_arguments() -> None:
-    assert "upgrade *args='':\n    pnpm run upgrade {{ args }}\n    pnpm install" in BASELINE
-    assert "upgrade-interactive:\n    pnpm run upgrade -i\n" in BASELINE
-    assert "pnpm run upgrade --" not in BASELINE
+def test_1_12_1_delegates_both_upgrade_modes_to_cz() -> None:
+    assert "upgrade *args='':\n    pnpm run --silent cz upgrade {{ args }}" in BASELINE
+    assert "upgrade-interactive:\n    @pnpm run --silent cz upgrade --interactive" in BASELINE

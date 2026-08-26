@@ -1,7 +1,7 @@
 (
     """VersionedCook for [pnpm] — global npm packages via `pnpm add -g`, installed versions read from """
-    """`pnpm list -g` and resolved against the npm registry. Runs as the invoking user; depends on [url] """
-    """(pnpm itself)."""
+    """`pnpm list -g`, and eligible versions resolved by pnpm under its release-age policy. Runs as the """
+    """invoking user; depends on [url] (pnpm itself)."""
 )
 
 import json
@@ -14,21 +14,10 @@ from pydantic import model_validator
 
 from totchef import shell
 from totchef.cook_base import PackageListCook, PackagesConfig, SyncOutcome
-from totchef.harness import fetch_latest_concurrent, fetch_url, find_binary
+from totchef.harness import find_binary
 
 if TYPE_CHECKING:
     from totchef.recipe_types import RecipeConfig
-
-NPM_REGISTRY = "https://registry.npmjs.org/{name}"
-
-
-def parse_npm_latest(payload: bytes) -> str | None:
-    """Latest version from the npm registry's per-package document (the `dist-tags.latest` field)."""
-    return json.loads(payload).get("dist-tags", {}).get("latest")
-
-
-def fetch_npm_latest(name: str) -> str | None:
-    return parse_npm_latest(fetch_url(NPM_REGISTRY.format(name=name)))
 
 
 def package_name(spec: str) -> str:
@@ -117,13 +106,6 @@ class PnpmCook(PackageListCook):
             return {}
         ensure_pnpm_home_env()
         return read_global_versions(pnpm)
-
-    @override
-    def find_latest(self, names: list[str]) -> dict[str, str | None]:
-        unversioned = [name for name in names if self.specs[name] == name]
-        latest = dict.fromkeys(names)
-        latest.update(fetch_latest_concurrent(unversioned, fetch_npm_latest))
-        return latest
 
     @override
     def sync(self, to_install: list[str], to_upgrade: list[str]) -> SyncOutcome:
