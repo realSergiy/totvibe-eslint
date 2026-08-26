@@ -3,8 +3,8 @@
 These cooks wrap a language ecosystem's own package manager — `cargo` for Rust,
 `uv` for Python, `pnpm` for global npm CLIs — installing tools into the invoking
 user's home and keeping them current. Each needs its runtime present first (via the
-matching `[url]` installer) and looks up latest versions from the ecosystem's
-registry.
+matching `[url]` installer). Cargo and uv look up latest versions from their
+ecosystem registries; pnpm applies its own version-eligibility policy.
 
 ## 4.1 Install and update Rust crates
 
@@ -69,11 +69,10 @@ versions are looked up concurrently from PyPI for the plan.
 `[pnpm] packages = [...]` installs missing globals and upgrades drifted ones with a
 single batched `pnpm add -g`; installed versions are read from pnpm's global tree.
 
-### 4.3.2 pnpm requires pnpm and looks up latest from the npm registry
+### 4.3.2 pnpm requires pnpm
 
 Requires `pnpm` to be present (depends on the `[url]` pnpm installer); if missing the
-run fails hard pointing at the `[url]` pnpm install. Latest versions are looked up
-concurrently from the npm registry for the plan.
+run fails hard pointing at the `[url]` pnpm install.
 
 ### 4.3.3 pnpm installs globals into pnpm home not an inherited data dir
 
@@ -90,3 +89,7 @@ A versioned package specifier such as `node@26` reports under the package's name
 ### 4.3.5 pnpm rejects conflicting specs for one package
 
 Two specifiers that identify the same package are ambiguous, so `[pnpm]` rejects declarations such as `node@26` alongside `node@27` instead of silently choosing one.
+
+### 4.3.6 pnpm delegates release-age resolution
+
+Every declared global is reconciled through `pnpm add -g`, so pnpm selects the newest version eligible under the active `minimumReleaseAge` policy instead of TotChef bypassing that policy with the registry's raw `latest` tag.

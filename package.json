@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=26"
   },
-  "packageManager": "pnpm@12.0.0-rc.8",
+  "packageManager": "pnpm@12.0.0-rc.11",
   "scripts": {
     "knip": "knip",
     "format": "prettier --write --cache --log-level warn .",

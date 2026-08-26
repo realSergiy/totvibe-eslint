@@ -189,7 +189,7 @@ def _global_list(*installed: tuple[str, str]) -> str:
 
 
 def test_4_3_1_pnpm_installs_and_upgrades_each_global_package(
-    recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
+    recipe: RecipeBuilder, terminal: FakeTerminal, totchef: Totchef, system: FakeSystem
 ) -> None:
     (
         """`[pnpm]` installs missing globals and upgrades drifted ones via a single batched """
@@ -197,8 +197,6 @@ def test_4_3_1_pnpm_installs_and_upgrades_each_global_package(
     )
     recipe.declares("pnpm", packages=[PI, "left-pad"])
     system.has("pnpm")
-    http.arrange("registry.npmjs.org/" + PI, '{"dist-tags": {"latest": "0.75.5"}}')
-    http.arrange("registry.npmjs.org/left-pad", '{"dist-tags": {"latest": "1.3.0"}}')
     # left-pad already installed at an older version → upgrade; PI absent → install
     terminal.arrange("pnpm list -g", _global_list(("left-pad", "1.2.0")))
 
@@ -215,23 +213,13 @@ def test_4_3_1_pnpm_installs_and_upgrades_each_global_package(
     terminal.expect_ran("pnpm add -g --ignore-scripts " + PI + " left-pad")  # one batched command for both
 
 
-def test_4_3_2_pnpm_requires_pnpm_and_looks_up_latest_from_the_npm_registry(
-    recipe: RecipeBuilder, http: FakeHttp, totchef: Totchef
-) -> None:
-    (
-        """Requires pnpm present (depends on the [url] pnpm installer); latest versions are """
-        """looked up concurrently from the npm registry."""
-    )
+def test_4_3_2_pnpm_requires_pnpm(recipe: RecipeBuilder, totchef: Totchef) -> None:
+    """Requires pnpm present (depends on the [url] pnpm installer)."""
     recipe.declares("pnpm", packages=[PI, "left-pad"])
-    http.arrange("registry.npmjs.org/" + PI, '{"dist-tags": {"latest": "0.75.5"}}')
-    http.arrange("registry.npmjs.org/left-pad", '{"dist-tags": {"latest": "1.3.0"}}')
-    http.expect_concurrent(parties=PAIRED_PARTIES)  # both npm lookups must overlap, not serialize
 
     plan = totchef.plan()
 
     plan.assert_shows("pnpm." + PI, "would install")
-    http.expect_fetched("registry.npmjs.org/left-pad")
-    assert http.max_concurrent_requests == PAIRED_PARTIES  # the two npm fetches ran concurrently for the plan
 
     report = totchef.up()  # pnpm isn't installed → hard fail pointing at [url]
 
@@ -287,3 +275,22 @@ def test_4_3_5_pnpm_rejects_conflicting_specs_for_one_package(recipe: RecipeBuil
 
     report.assert_rejected("node@26")
     report.assert_rejected("node@27")
+
+
+def test_4_3_6_pnpm_delegates_release_age_resolution(
+    recipe: RecipeBuilder, terminal: FakeTerminal, http: FakeHttp, totchef: Totchef, system: FakeSystem
+) -> None:
+    """pnpm owns which release is currently eligible under its minimumReleaseAge policy."""
+    package = "@zyplux/cz"
+    recipe.declares("pnpm", packages=[package])
+    system.has("pnpm")
+    terminal.arrange("pnpm list -g", _global_list((package, "0.7.0")))
+    terminal.arrange("pnpm add -g")
+
+    plan = totchef.plan()
+    report = totchef.up()
+
+    plan.assert_shows("pnpm." + package, "would sync")
+    report.assert_shows("pnpm." + package, "unchanged")
+    terminal.expect_ran("pnpm add -g --ignore-scripts " + package)
+    assert http.requests == []

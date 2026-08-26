@@ -803,7 +803,7 @@ wheels = [
 
 [[package]]
 name = "totchef"
-version = "0.0.3"
+version = "0.0.4"
 source = { editable = "apps/totchef" }
 dependencies = [
     { name = "loguru" },
@@ -1060,7 +1060,7 @@ type = [
 
 [[package]]
 name = "zyplux-cerberus"
-version = "0.17.0"
+version = "0.17.1"
 source = { editable = "apps/cerberus" }
 dependencies = [
     { name = "networkx" },
