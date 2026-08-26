@@ -3,7 +3,16 @@ import type { CliRunner } from '@zyplux/tests-fixtures/cli';
 import { cliTest, makeFixture } from '@zyplux/tests-fixtures/story';
 
 import type { Catalog, PublishedPackage, TsconfigPresets } from './act.ts';
-import type { InitRepo, LiveWorkspace, Registries, Release, Repo, SeededTargets, WriteArtifacts } from './arrange.ts';
+import type {
+  InitRepo,
+  LiveWorkspace,
+  Registries,
+  Release,
+  Repo,
+  SeededTargets,
+  UpgradeWorkspace,
+  WriteArtifacts,
+} from './arrange.ts';
 
 import { createCatalog, createCz, loadPublishedPackages, loadTsconfigPresets } from './act.ts';
 import {
@@ -12,6 +21,7 @@ import {
   createRegistries,
   createRelease,
   createRepo,
+  createUpgradeWorkspace,
   createWriteArtifacts,
   enterCwd,
   seedReleaseTargets,
@@ -27,6 +37,7 @@ type CzFixtures = {
   release: Release;
   repo: Repo;
   tsconfigPresets: TsconfigPresets;
+  upgradeWorkspace: UpgradeWorkspace;
 };
 
 export const test = cliTest.extend<CzFixtures>({
@@ -53,6 +64,9 @@ export const test = cliTest.extend<CzFixtures>({
   },
   tsconfigPresets: async ({}, use) => {
     await use(loadTsconfigPresets());
+  },
+  upgradeWorkspace: async ({ network, tempDir }, use) => {
+    await use(createUpgradeWorkspace(network, tempDir));
   },
 });
 

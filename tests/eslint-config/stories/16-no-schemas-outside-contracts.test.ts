@@ -2,82 +2,58 @@ import { describe, expect, test } from '#fixtures';
 
 test.override({ ruleName: 'no-schemas-outside-contracts' });
 
-type ReportCase = [shape: string, code: string, ids: ReportIds];
-type ReportIds = readonly [string, ...string[]];
+type ReportCase = [shape: string, code: string];
 type ReportNothingCase = [shape: string, code: string];
 
-describe('16.1 keeping schema construction in contracts', () => {
+describe('16.1 keeping schema exports in contracts', () => {
   test.for<ReportCase>([
     [
-      '1 flags a zod value import and the schema const it builds',
-      ["import * as z from 'zod';", 'const UserSchema = z.object({ id: z.string() });'].join('\n'),
-      ['zodValueImport', 'schemaDeclaration'],
+      '1 flags an exported schema declaration',
+      "import * as z from 'zod';\nexport const UserSchema = z.object({ id: z.string() });",
     ],
     [
-      '2 flags a schema composed inline from an imported contracts schema',
-      [
-        "import { PackageJsonSchema } from '@zyplux/util/contracts';",
-        'export const readManifests = (raw: unknown) => PackageJsonSchema.array().parse(raw);',
-      ].join('\n'),
-      ['schemaConstruction'],
+      '2 flags a schema exported after its declaration',
+      "import * as z from 'zod';\nconst UserSchema = z.object({ id: z.string() });\nexport { UserSchema };",
     ],
     [
-      '3 reports a construction chain once at its declaration',
-      ["import * as z from 'zod';", 'const TagsSchema = z.array(z.string()).optional();'].join('\n'),
-      ['zodValueImport', 'schemaDeclaration'],
+      '3 flags a default schema export',
+      "import * as z from 'zod';\nconst UserSchema = z.object({ id: z.string() });\nexport default UserSchema;",
     ],
-    ['4 flags a named value import that exposes a schema factory', "import { z } from 'zod';", ['zodValueImport']],
-    [
-      '5 flags a named object import that exposes a schema factory',
-      "import { object } from 'zod';",
-      ['zodValueImport'],
-    ],
-  ])('16.1.%s', ([, code, ids], { lintRule }) => {
-    expect(lintRule(code)).toReport(...ids);
+  ])('16.1.%s', ([, code], { lintRule }) => {
+    expect(lintRule(code)).toReport('schemaExport');
   });
 });
 
-describe('16.2 allowing schema use outside contracts', () => {
+describe('16.2 allowing local schema implementation', () => {
   test.for<ReportNothingCase>([
     [
-      '1 allows importing a contracts schema and parsing with it',
-      [
-        "import { PackageJsonSchema } from '@zyplux/util/contracts';",
-        'export const readManifest = (raw: string) => PackageJsonSchema.parse(JSON.parse(raw));',
-      ].join('\n'),
+      '1 allows zod imports and local schema construction',
+      "import * as z from 'zod';\nconst UserSchema = z.object({ id: z.string() });\nexport const readUser = (raw: unknown) => UserSchema.parse(raw);",
     ],
     [
-      '2 allows a schema-typed parameter and type-only zod import',
-      [
-        "import type { ZodType } from 'zod';",
-        'export const parseWith = <Parsed>(schema: ZodType<Parsed>, raw: unknown) => schema.parse(raw);',
-      ].join('\n'),
+      '2 allows composing an imported schema locally',
+      "import { PackageJsonSchema } from '@zyplux/util/contracts';\nconst PackageListSchema = PackageJsonSchema.array();\nexport const readManifests = (raw: unknown) => PackageListSchema.parse(raw);",
     ],
-    ['3 allows a type-only import combined with a value import', "import { type ZodType } from 'zod';"],
+    [
+      '3 allows a schema-typed parameter and type-only zod import',
+      "import { type ZodType } from 'zod';\nexport { type ZodType };\nexport const parseWith = <Parsed>(schema: ZodType<Parsed>, raw: unknown) => schema.parse(raw);",
+    ],
     [
       '4 allows an inferred type from an imported contracts schema',
-      [
-        "import type * as z from 'zod';",
-        "import { PackageJsonSchema } from '@zyplux/util/contracts';",
-        'export type Manifest = z.infer<typeof PackageJsonSchema>;',
-      ].join('\n'),
+      "import type * as z from 'zod';\nimport { PackageJsonSchema } from '@zyplux/util/contracts';\nexport type Manifest = z.infer<typeof PackageJsonSchema>;",
     ],
-    [
-      '5 allows named zod values that cannot build schemas',
-      [
-        "import { ZodError } from 'zod';",
-        'export const describeSchemaError = (error: unknown) => (error instanceof ZodError ? error.message : undefined);',
-      ].join('\n'),
-    ],
+    ['5 allows non-schema declaration exports', 'export function getName() { return "zyplux"; }'],
   ])('16.2.%s', ([, code], { lintRule }) => {
     expect(lintRule(code)).toReportNothing();
   });
 });
 
-describe('16.3 scoping the rule to every typescript file in the shipped config', () => {
-  test('16.3.1 enables the rule for every typescript file while exempting the contracts modules', ({ zyplux }) => {
+describe('16.3 scoping the rule to implementation files', () => {
+  test('16.3.1 enables the rule while exempting contracts entrypoints and child modules', ({ zyplux }) => {
     const config = zyplux();
     const entries = config.filter(entry => entry.rules?.['@zyplux/no-schemas-outside-contracts'] !== undefined);
-    expect(entries.map(entry => [entry.files, entry.ignores])).toEqual([[['**/*.{ts,tsx}'], ['**/src/contracts.ts']]]);
+    expect(entries.map(entry => [entry.files, entry.ignores])).toEqual([
+      [['**/*.{ts,tsx}'], ['**/src/contracts.ts', '**/src/contracts/**/*.ts']],
+    ]);
   });
 });

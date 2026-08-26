@@ -51,25 +51,13 @@ cerberus:
 # Full gate across both workspaces: install, knip, typecheck, lint, test, cerberus — autofix throughout.
 check: install knip typecheck lint test cerberus
 
-# Upgrade deps across both workspaces: ncu bumps JS ranges; uv lock --upgrade + uv-bump raise Python >= floors. Forwards extra args to ncu.
+# Upgrade the pinned toolchain plus JavaScript and Python workspace dependencies through cz.
 upgrade *args='':
-    pnpm run --silent toolchain-report -- --update
-    pnpm exec npm-check-updates -u --dep packageManager --target newest
-    pnpm run upgrade --dep prod,dev,optional {{ args }}
-    pnpm install
-    uv lock --upgrade
-    uvx uv-bump -v
-    uv sync --all-packages --all-groups
+    pnpm run --silent cz upgrade {{ args }}
 
-# Interactively select toolchain and JS upgrades, then non-interactively upgrade Python (uv has no interactive mode) and reinstall both.
+# Interactively select toolchain and JavaScript upgrades; Python upgrades remain non-interactive.
 upgrade-interactive:
-    @pnpm run --silent toolchain-report
-    pnpm exec npm-check-updates -i --dep packageManager --target newest
-    pnpm run upgrade -i --dep prod,dev,optional
-    pnpm install
-    uv lock --upgrade
-    uvx uv-bump -v
-    uv sync --all-packages --all-groups
+    @pnpm run --silent cz upgrade --interactive
 
 # Push the current branch and open a draft PR (-r/--ready marks it ready and enables auto-merge).
 push *flags:

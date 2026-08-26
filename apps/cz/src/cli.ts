@@ -10,6 +10,7 @@ import { publishTaggedTargetCommand, runPublishTaggedTarget } from './commands/p
 import { pushBranchCommand, runPushBranch } from './commands/push-branch.ts';
 import { releaseBumpedTargetsCommand, runReleaseBumpedTargets } from './commands/release-bumped-targets.ts';
 import { runTest, testCommand } from './commands/test.ts';
+import { runUpgrade, upgradeCommand } from './commands/upgrade.ts';
 import { defineProgram, message, or, run } from './optique.ts';
 
 const VERSION = loadPackageVersion(import.meta.url);
@@ -31,6 +32,7 @@ const program = defineProgram({
     printTagKindCommand,
     cleanCommand,
     testCommand,
+    upgradeCommand,
   ),
 });
 
@@ -85,6 +87,9 @@ export const runCz = async (args: readonly string[], io: CzIo = {}) => {
     }
     case 'test': {
       return runTest(result);
+    }
+    case 'upgrade': {
+      return runUpgrade(result);
     }
     default: {
       return assertNever(result);

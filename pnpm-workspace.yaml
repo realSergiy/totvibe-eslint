@@ -19,7 +19,6 @@ catalog:
   eslint-plugin-prefer-arrow-functions: '^3.10.2'
   eslint-plugin-unicorn: '^73.0.0'
   knip: '^6.32.2'
-  npm-check-updates: '^23.1.0'
   prettier: '^3.9.6'
   smol-toml: '^1.8.0'
   typescript: '^6.0.3'
@@ -33,3 +32,7 @@ minimumReleaseAgeExcludePrune: true
 
 minimumReleaseAgeExclude:
   - '@zyplux/*'
+
+updateConfig:
+  ignoreDependencies:
+    - typescript

@@ -10,16 +10,14 @@
       "onFail": "download"
     }
   },
-  "packageManager": "pnpm@12.0.0-rc.11",
+  "packageManager": "pnpm@12.0.0",
   "scripts": {
     "knip": "knip",
     "format": "prettier --write --cache --log-level warn .",
     "typecheck": "tsc -b",
     "lint": "eslint . --cache",
     "lint:fix": "pnpm run lint --fix",
-    "toolchain-report": "node scripts/report-toolchain-updates.ts",
     "test": "vitest run",
-    "upgrade": "npm-check-updates --root --workspaces --format group --reject typescript -u",
     "cz": "node apps/cz/src/index.ts"
   },
   "devDependencies": {
@@ -29,10 +27,8 @@
     "@zyplux/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "knip": "catalog:",
-    "npm-check-updates": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "zod": "catalog:"
+    "vitest": "catalog:"
   }
 }

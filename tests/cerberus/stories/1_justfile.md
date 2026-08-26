@@ -271,8 +271,8 @@ without actually invoking them (`pnpm run echo cz clean`, which runs `echo`)
 is not a `cz clean` invocation: only the exact shapes the org's repos use —
 `cz clean`, `pnpm run cz clean`, `pnpx cz clean` — satisfy the check.
 
-## 1.12 forwarding upgrade arguments through pnpm 12
+## 1.12 delegating upgrades to cz
 
-### 1.12.1 keeps pnpm separator out of script arguments
+### 1.12.1 delegates both upgrade modes to cz
 
-pnpm 12 forwards the `--` after a script name to that script. The canonical upgrade recipes therefore pass optional and interactive arguments directly, so npm-check-updates receives `-i` instead of a literal separator and package filter. The non-interactive recipe first raises the project Node runtime, then installs the dependency ranges it updates before continuing to Python dependencies.
+The canonical recipes keep `just u` and `just ui` as the stable interface while `cz upgrade` owns toolchain, JavaScript, and Python dependency updates for every repository.
