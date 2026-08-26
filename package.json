@@ -3,8 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": ">=26"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "26.7.0",
+      "onFail": "download"
+    }
   },
   "packageManager": "pnpm@12.0.0-rc.11",
   "scripts": {
@@ -13,6 +17,7 @@
     "typecheck": "tsc -b",
     "lint": "eslint . --cache",
     "lint:fix": "pnpm run lint --fix",
+    "toolchain-report": "node scripts/report-toolchain-updates.ts",
     "test": "vitest run",
     "upgrade": "npm-check-updates --root --workspaces --format group --reject typescript -u",
     "cz": "node apps/cz/src/index.ts"
@@ -27,6 +32,7 @@
     "npm-check-updates": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }

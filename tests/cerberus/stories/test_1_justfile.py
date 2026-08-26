@@ -405,12 +405,14 @@ def test_1_11_5_does_not_count_a_runner_wrapping_an_unrelated_command(
 def test_1_12_1_keeps_pnpm_separator_out_of_script_arguments() -> None:
     assert (
         "upgrade *args='':\n"
+        "    pnpm run --silent toolchain-report -- --update\n"
         "    pnpm exec npm-check-updates -u --dep packageManager --target newest\n"
         "    pnpm run upgrade --dep prod,dev,optional {{ args }}\n"
         "    pnpm install"
     ) in BASELINE
     assert (
         "upgrade-interactive:\n"
+        "    @pnpm run --silent toolchain-report\n"
         "    pnpm exec npm-check-updates -i --dep packageManager --target newest\n"
         "    pnpm run upgrade -i --dep prod,dev,optional\n"
     ) in BASELINE

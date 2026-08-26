@@ -275,4 +275,4 @@ is not a `cz clean` invocation: only the exact shapes the org's repos use —
 
 ### 1.12.1 keeps pnpm separator out of script arguments
 
-pnpm 12 forwards the `--` after a script name to that script. The canonical upgrade recipes therefore pass optional and interactive arguments directly, so npm-check-updates receives `-i` instead of a literal separator and package filter. The non-interactive recipe installs the ranges it updates before continuing to Python dependencies.
+pnpm 12 forwards the `--` after a script name to that script. The canonical upgrade recipes therefore pass optional and interactive arguments directly, so npm-check-updates receives `-i` instead of a literal separator and package filter. The non-interactive recipe first raises the project Node runtime, then installs the dependency ranges it updates before continuing to Python dependencies.

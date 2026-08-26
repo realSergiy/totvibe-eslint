@@ -53,6 +53,7 @@ check: install knip typecheck lint test cerberus
 
 # Upgrade deps across both workspaces: ncu bumps JS ranges; uv lock --upgrade + uv-bump raise Python >= floors. Forwards extra args to ncu.
 upgrade *args='':
+    pnpm run --silent toolchain-report -- --update
     pnpm exec npm-check-updates -u --dep packageManager --target newest
     pnpm run upgrade --dep prod,dev,optional {{ args }}
     pnpm install
@@ -60,8 +61,9 @@ upgrade *args='':
     uvx uv-bump -v
     uv sync --all-packages --all-groups
 
-# Interactively select JS upgrades, then non-interactively upgrade Python (uv has no interactive mode) and reinstall both.
+# Interactively select toolchain and JS upgrades, then non-interactively upgrade Python (uv has no interactive mode) and reinstall both.
 upgrade-interactive:
+    @pnpm run --silent toolchain-report
     pnpm exec npm-check-updates -i --dep packageManager --target newest
     pnpm run upgrade -i --dep prod,dev,optional
     pnpm install
